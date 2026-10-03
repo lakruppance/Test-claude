@@ -40,6 +40,7 @@ export const messages = {
     "error.no_speech": "Pas assez de parole détectée dans la vidéo.",
     "error.no_segments": "Aucun passage ne répond aux critères de qualité d'un clip.",
     "error.internal_error": "Une erreur technique est survenue. Le traitement a été réessayé sans succès.",
+    "error.claude_not_configured": "La clé API Claude n'est pas configurée (ANTHROPIC_API_KEY).",
     "error.default": "Le traitement a échoué.",
   },
   en: {
@@ -82,6 +83,7 @@ export const messages = {
     "error.no_speech": "Not enough speech was detected in the video.",
     "error.no_segments": "No passage meets the clip quality criteria.",
     "error.internal_error": "A technical error occurred. Processing was retried without success.",
+    "error.claude_not_configured": "The Claude API key is not configured (ANTHROPIC_API_KEY).",
     "error.default": "Processing failed.",
   },
 } as const;

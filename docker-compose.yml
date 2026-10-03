@@ -1,0 +1,44 @@
+# Local stack for small-scale testing. Supabase runs separately (npx supabase start).
+# Start everything with: scripts/local-up.sh
+
+services:
+  storage:
+    # S3-compatible object storage standing in for Cloudflare R2.
+    image: chrislusf/seaweedfs:latest
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -ip.bind=0.0.0.0
+    ports: ["8333:8333"]
+    volumes:
+      - storage-data:/data
+      - ./local/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    restart: unless-stopped
+
+  storage-init:
+    build: ./workers
+    command: python /scripts/setup_local_storage.py
+    volumes: ["./scripts:/scripts:ro"]
+    env_file: [.env.local]
+    environment:
+      R2_ENDPOINT: http://storage:8333
+    depends_on: [storage]
+    restart: "no"
+
+  worker:
+    # Same HTTP API as the Modal deployment, running the pipeline on this machine.
+    build: ./workers
+    ports: ["8787:8787"]
+    env_file: [.env.local]
+    environment:
+      APP_ENV: development
+      R2_ENDPOINT: http://storage:8333
+      NEXT_PUBLIC_SUPABASE_URL: http://host.docker.internal:54321
+      CLIPPER_ASSETS_DIR: /assets
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes: ["whisper-models:/models/whisper"]
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  storage-data:
+  whisper-models:

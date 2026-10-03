@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "modal==1.6.1", "ruff>=0.6"]
+local = ["fastapi>=0.115", "uvicorn>=0.30", "faster-whisper>=1.1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

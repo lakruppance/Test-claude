@@ -121,3 +121,11 @@ def test_detect_segments_end_to_end_with_fake_claude():
     assert call["fallbacks"] == "default"
     # 1000 * $2/M + 500 * $10/M = $0.007
     assert abs(ledger.total_usd - 0.007) < 1e-9
+
+
+def test_local_runtime_reports_free_compute_with_cloud_equivalent(monkeypatch):
+    monkeypatch.setenv("CLIPPER_RUNTIME", "local")
+    ledger = CostLedger(Settings().prices)
+    line = ledger.compute("render", 100, 4, 8)
+    assert line.provider == "local" and line.usd == 0
+    assert line.meta["cloud_equivalent_usd"] > 0

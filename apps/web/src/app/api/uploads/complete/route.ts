@@ -1,6 +1,8 @@
 import { tasks } from "@trigger.dev/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { env } from "@/lib/env";
+import { startLocalJob } from "@/lib/local-runner";
 import { completeMultipartUpload } from "@/lib/r2";
 import { ANONYMOUS_OWNER } from "@/lib/storage-keys";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -32,6 +34,12 @@ export async function POST(request: Request) {
     await completeMultipartUpload(job.source_key, job.options.upload_id, parts);
   } catch {
     return NextResponse.json({ error: "upload_incomplete" }, { status: 409 });
+  }
+
+  if (env().ORCHESTRATOR === "local") {
+    await db.from("jobs").update({ status: "queued" }).eq("id", jobId);
+    startLocalJob(jobId, ANONYMOUS_OWNER);
+    return NextResponse.json({ jobId, status: "queued" });
   }
 
   const handle = await tasks.trigger<typeof processVideo>(

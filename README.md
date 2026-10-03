@@ -4,6 +4,10 @@ SaaS qui génère des clips verticaux sous-titrés à partir de vidéos longues 
 
 État : **phase 1, cœur de traitement** (voir [`docs/phase-1.md`](docs/phase-1.md)). Voir [`docs/phase-0.md`](docs/phase-0.md) pour les choix techniques, les coûts estimés et les comptes à créer, et [`.env.example`](.env.example) pour les variables d'environnement.
 
+## Tester en local, sans abonnement
+
+Voir [`docs/local.md`](docs/local.md). En résumé : Docker et Node.js 20+, puis `scripts/local-up.sh`.
+
 ## Structure
 
 - `apps/web` : Next.js (interface, API, tâches Trigger.dev)

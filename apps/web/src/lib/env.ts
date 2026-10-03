@@ -11,6 +11,12 @@ const schema = z.object({
   R2_BUCKET: z.string().min(1),
   R2_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   STAGING_BASIC_AUTH: z.string().optional(),
+  S3_FORCE_PATH_STYLE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  // "trigger" (staging/production) or "local" (runs jobs inside this Next.js server).
+  ORCHESTRATOR: z.enum(["trigger", "local"]).default("trigger"),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(5 * 1024 ** 3),
   CLIP_STYLE_DEFAULT: z.enum(["impact", "boite", "epure"]).default("impact"),
 });

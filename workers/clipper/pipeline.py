@@ -4,6 +4,7 @@ outputs, so the orchestrator can retry safely. Costs of every attempt are record
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import time
 from dataclasses import dataclass
@@ -14,8 +15,9 @@ from .config import Settings
 from .costs import CostLedger
 from .models import Segment, Transcript
 
-FONTS_DIR = Path("/assets/fonts")
-FACE_MODEL = Path("/assets/models/blaze_face_short_range.tflite")
+ASSETS_DIR = Path(os.environ.get("CLIPPER_ASSETS_DIR", "/assets"))
+FONTS_DIR = ASSETS_DIR / "fonts"
+FACE_MODEL = ASSETS_DIR / "models" / "blaze_face_short_range.tflite"
 
 
 class PipelineError(Exception):

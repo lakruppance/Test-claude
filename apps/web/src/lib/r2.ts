@@ -18,6 +18,12 @@ function s3(): S3Client {
       region: "auto",
       endpoint: e.R2_ENDPOINT,
       credentials: { accessKeyId: e.R2_ACCESS_KEY_ID, secretAccessKey: e.R2_SECRET_ACCESS_KEY },
+      // MinIO (local) needs path-style URLs; R2 works with either.
+      forcePathStyle: e.S3_FORCE_PATH_STYLE,
+      // The SDK otherwise signs a CRC32 of the (empty) body into presigned part URLs, and the
+      // browser's real upload is then rejected with BadDigest (R2 and local S3 alike).
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
     });
   }
   return client;

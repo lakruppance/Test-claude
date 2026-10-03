@@ -47,6 +47,14 @@ jobs:
       - run: uv run ruff check clipper modal_app.py tests
       - run: uv run pytest -q
 
+  worker-image:
+    name: worker image (local stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t clipper-worker:ci workers
+      - run: docker run --rm clipper-worker:ci python -c "import local_server, mediapipe, faster_whisper; print('ok')"
+
   database:
     name: database (RLS tests)
     runs-on: ubuntu-latest

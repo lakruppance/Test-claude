@@ -8,7 +8,6 @@ Secrets: a Modal secret named "clipper-secrets" holding the variables listed in 
 from __future__ import annotations
 
 import os
-import traceback
 from typing import Any
 
 import modal
@@ -48,92 +47,35 @@ image = (
 app = modal.App("clipper", image=image)
 secrets = [modal.Secret.from_name("clipper-secrets")]
 
-# Resources per step, also used for cost accounting (Modal bills the reserved amount at minimum).
-RESOURCES = {
-    "prepare": (2.0, 4.0),
-    "transcribe": (0.25, 0.5),
-    "detect": (0.25, 0.5),
-    "render": (4.0, 8.0),
-}
+# Each function reserves the resources declared in clipper/steps.py (used for cost accounting).
 
 
-def _job(payload: dict[str, Any]):
-    from clipper.pipeline import JobRef
-
-    return JobRef(job_id=payload["job_id"], owner_id=payload["owner_id"],
-                  user_id=payload.get("user_id"))
-
-
-def _run(step: str, fn, payload: dict[str, Any]) -> dict[str, Any]:
-    """Run a step and turn expected failures into structured results."""
-    from clipper.pipeline import PipelineError, Resources
-
-    cores, mem = RESOURCES[step]
-    try:
-        result = fn(Resources(cores, mem))
-        return {"ok": True, "result": result}
-    except PipelineError as exc:
-        return {"ok": False, "retryable": False, "code": exc.code, "message": str(exc),
-                "details": exc.details}
-    except Exception as exc:  # unexpected: let the orchestrator retry
-        traceback.print_exc()
-        return {"ok": False, "retryable": True, "code": "internal_error",
-                "message": f"{type(exc).__name__}: {exc}"[:1000]}
-
-
-@app.function(secrets=secrets, cpu=RESOURCES["prepare"][0], memory=4096, timeout=3600,
-              ephemeral_disk=100 * 1024)
+@app.function(secrets=secrets, cpu=2.0, memory=4096, timeout=3600, ephemeral_disk=100 * 1024)
 def prepare_step(payload: dict[str, Any]) -> dict[str, Any]:
-    from clipper import pipeline
-    from clipper.config import get_settings
-    from clipper.db import Database
-    from clipper.storage import R2
+    from clipper.steps import run_step
 
-    return _run("prepare", lambda res: pipeline.prepare(
-        _job(payload), get_settings(), R2(), Database(), res, payload.get("attempt", 1)), payload)
+    return run_step("prepare", payload)
 
 
-@app.function(secrets=secrets, cpu=RESOURCES["transcribe"][0], memory=512, timeout=3 * 3600)
+@app.function(secrets=secrets, cpu=0.25, memory=512, timeout=3 * 3600)
 def transcribe_step(payload: dict[str, Any]) -> dict[str, Any]:
-    from clipper import pipeline
-    from clipper.config import get_settings
-    from clipper.db import Database
-    from clipper.storage import R2
-    from clipper.transcribe import get_provider
+    from clipper.steps import run_step
 
-    settings = get_settings()
-    return _run("transcribe", lambda res: pipeline.transcribe(
-        _job(payload), settings, R2(), Database(), get_provider(settings), res,
-        payload.get("attempt", 1)), payload)
+    return run_step("transcribe", payload)
 
 
-@app.function(secrets=secrets, cpu=RESOURCES["detect"][0], memory=512, timeout=1800)
+@app.function(secrets=secrets, cpu=0.25, memory=512, timeout=1800)
 def detect_step(payload: dict[str, Any]) -> dict[str, Any]:
-    import anthropic
+    from clipper.steps import run_step
 
-    from clipper import pipeline
-    from clipper.config import get_settings
-    from clipper.db import Database
-    from clipper.storage import R2
-
-    messages = anthropic.Anthropic(max_retries=4).beta.messages
-    return _run("detect", lambda res: pipeline.detect(
-        _job(payload), get_settings(), R2(), Database(), messages, res,
-        payload.get("attempt", 1)), payload)
+    return run_step("detect", payload)
 
 
-@app.function(secrets=secrets, cpu=RESOURCES["render"][0], memory=8192, timeout=3600,
-              ephemeral_disk=100 * 1024)
+@app.function(secrets=secrets, cpu=4.0, memory=8192, timeout=3600, ephemeral_disk=100 * 1024)
 def render_step(payload: dict[str, Any]) -> dict[str, Any]:
-    from clipper import pipeline
-    from clipper.config import get_settings
-    from clipper.db import Database
-    from clipper.storage import R2
+    from clipper.steps import run_step
 
-    return _run("render", lambda res: pipeline.render(
-        _job(payload), payload["segment_id"], payload.get("style", "impact"), get_settings(),
-        R2(), Database(), res, payload.get("attempt", 1),
-        with_hook=payload.get("with_hook", True)), payload)
+    return run_step("render", payload)
 
 
 STEPS = {
@@ -163,9 +105,11 @@ def api():
         fn = STEPS.get(step)
         if fn is None:
             raise HTTPException(status_code=404, detail="unknown step")
-        for key in ("job_id", "owner_id"):
-            if not isinstance(payload.get(key), str):
-                raise HTTPException(status_code=422, detail=f"missing {key}")
+        from clipper.steps import validate_payload
+
+        problem = validate_payload(payload)
+        if problem:
+            raise HTTPException(status_code=422, detail=problem)
         call = fn.spawn(payload)
         return {"call_id": call.object_id}
 

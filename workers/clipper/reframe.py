@@ -57,6 +57,15 @@ def probe(path: str | Path) -> VideoInfo:
     return VideoInfo(width, height, fps, float(data["format"]["duration"]), has_audio)
 
 
+def probe_duration(path: str | Path) -> float:
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+         str(path)],
+        check=True, capture_output=True, text=True,
+    ).stdout
+    return float(out.strip())
+
+
 def sample_frames(path: str | Path, start: float, end: float, info: VideoInfo):
     """Yield (t_relative, rgb ndarray) at SAMPLE_FPS, downscaled for detection."""
     w = DETECT_WIDTH if info.width > DETECT_WIDTH else info.width - info.width % 2

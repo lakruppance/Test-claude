@@ -29,7 +29,12 @@ class R2:
             aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
             aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
             region_name="auto",
-            config=Config(retries={"max_attempts": 5, "mode": "standard"}),
+            config=Config(
+                retries={"max_attempts": 5, "mode": "standard"},
+                # Local S3 (SeaweedFS) needs path-style addressing; R2 accepts both.
+                s3={"addressing_style": "path"
+                    if os.environ.get("S3_FORCE_PATH_STYLE") == "true" else "auto"},
+            ),
         )
 
     def download(self, key: str, dest: Path) -> Path:

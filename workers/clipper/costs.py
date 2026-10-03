@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -64,24 +65,38 @@ class CostLedger:
         self.lines.append(line)
         return line
 
+    @staticmethod
+    def _local() -> bool:
+        # Local runs (scripts/local-up.sh): compute and storage are free; keep the cloud price
+        # as an indication of what the same work would cost on Modal/R2.
+        return os.environ.get("CLIPPER_RUNTIME") == "local"
+
     def compute(self, item: str, seconds: float, cores: float, memory_gib: float) -> CostLine:
         usd = seconds * (
             cores * self.prices.modal_core_second + memory_gib * self.prices.modal_gib_second
         )
+        meta = {"seconds": round(seconds, 2), "cores": cores, "memory_gib": memory_gib}
+        if self._local():
+            meta["cloud_equivalent_usd"] = round(usd, 6)
         line = CostLine(
-            "modal",
+            "local" if self._local() else "modal",
             item,
             seconds * cores,
             "core_second",
-            usd,
-            {"seconds": round(seconds, 2), "cores": cores, "memory_gib": memory_gib},
+            0.0 if self._local() else usd,
+            meta,
         )
         self.lines.append(line)
         return line
 
     def storage(self, item: str, size_bytes: int, retention_days: float) -> CostLine:
         gb_month = size_bytes / 1e9 * retention_days / 30
-        line = CostLine("r2", item, gb_month, "gb_month", gb_month * self.prices.r2_gb_month)
+        usd = gb_month * self.prices.r2_gb_month
+        if self._local():
+            line = CostLine("local", item, gb_month, "gb_month", 0.0,
+                            {"cloud_equivalent_usd": round(usd, 6)})
+        else:
+            line = CostLine("r2", item, gb_month, "gb_month", usd)
         self.lines.append(line)
         return line
 

@@ -23,6 +23,8 @@ export interface OrchestratorDeps {
   startStep(step: StepName, payload: StepPayload): Promise<string>;
   pollCall(callId: string): Promise<CallStatus>;
   sleep(seconds: number): Promise<void>;
+  /** Seconds between polls of running worker calls (default POLL_SECONDS). */
+  pollSeconds?: number;
   log?(message: string, data?: Record<string, unknown>): void;
 }
 
@@ -74,7 +76,7 @@ async function runCalls(
   for (const p of payloads) await start(p.key, p.payload);
 
   while (pending.length > 0) {
-    await deps.sleep(POLL_SECONDS);
+    await deps.sleep(deps.pollSeconds ?? POLL_SECONDS);
     const polled = pending;
     pending = [];
     const retries: Started[] = [];
