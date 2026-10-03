@@ -34,10 +34,16 @@ class JobRef:
     user_id: str | None  # value written to user_id columns
 
     @property
-    def prefix(self) -> str:
-        from .storage import job_prefix
+    def sources(self) -> str:
+        from .storage import source_prefix
 
-        return job_prefix(self.owner_id, self.job_id)
+        return source_prefix(self.owner_id, self.job_id)
+
+    @property
+    def outputs(self) -> str:
+        from .storage import output_prefix
+
+        return output_prefix(self.owner_id, self.job_id)
 
 
 @dataclass
@@ -83,7 +89,7 @@ def prepare(job: JobRef, settings: Settings, r2, db, resources: Resources,
             raise PipelineError("no_audio", "The video has no audio track")
         audio = Path(tmp) / "audio.mp3"
         extract_audio(source, audio)
-        size = r2.upload(audio, f"{job.prefix}/audio.mp3", "audio/mpeg")
+        size = r2.upload(audio, f"{job.sources}/audio.mp3", "audio/mpeg")
         ledger.storage("audio", size, 7)
     ledger.compute("prepare", time.monotonic() - started, resources.cores, resources.memory_gib)
     cost = _record_costs(db, job, "prepare", ledger, attempt)
@@ -96,12 +102,12 @@ def transcribe(job: JobRef, settings: Settings, r2, db, provider, resources: Res
     started = time.monotonic()
     ledger = CostLedger(settings.prices)
     with tempfile.TemporaryDirectory() as tmp:
-        audio = r2.download(f"{job.prefix}/audio.mp3", Path(tmp) / "audio.mp3")
+        audio = r2.download(f"{job.sources}/audio.mp3", Path(tmp) / "audio.mp3")
         transcript = provider.transcribe(audio, ledger)
     if len(transcript.words) < 20:
         _record_costs(db, job, "transcribe", ledger, attempt)
         raise PipelineError("no_speech", "Not enough speech was detected in this video")
-    r2.put_json(f"{job.prefix}/transcript.json", transcript.model_dump_json())
+    r2.put_json(f"{job.outputs}/transcript.json", transcript.model_dump_json())
     db.insert(
         "transcripts",
         {
@@ -125,7 +131,7 @@ def detect(job: JobRef, settings: Settings, r2, db, messages, resources: Resourc
 
     started = time.monotonic()
     ledger = CostLedger(settings.prices)
-    transcript = Transcript.model_validate_json(r2.get_text(f"{job.prefix}/transcript.json"))
+    transcript = Transcript.model_validate_json(r2.get_text(f"{job.outputs}/transcript.json"))
     try:
         segments = detect_segments(messages, transcript, settings, ledger)
     finally:
@@ -135,7 +141,7 @@ def detect(job: JobRef, settings: Settings, r2, db, messages, resources: Resourc
         raise PipelineError("no_segments", "No passage met the clip quality rules")
 
     payload = [s.model_dump(exclude={"sentence_start", "sentence_end"}) for s in segments]
-    r2.put_json(f"{job.prefix}/segments.json", json.dumps(payload, ensure_ascii=False, indent=2))
+    r2.put_json(f"{job.outputs}/segments.json", json.dumps(payload, ensure_ascii=False, indent=2))
     db.delete("segments", job_id=job.job_id)  # idempotent re-run (cascades to clips)
     rows = db.insert(
         "segments",
@@ -191,7 +197,7 @@ def render(job: JobRef, segment_id: str, style: str, settings: Settings, r2, db,
         sentence_end=seg_row["sentence_end"],
     )
     job_row = db.select_one("jobs", id=job.job_id)
-    transcript = Transcript.model_validate_json(r2.get_text(f"{job.prefix}/transcript.json"))
+    transcript = Transcript.model_validate_json(r2.get_text(f"{job.outputs}/transcript.json"))
 
     with tempfile.TemporaryDirectory() as tmp:
         tmpdir = Path(tmp)
@@ -209,8 +215,8 @@ def render(job: JobRef, segment_id: str, style: str, settings: Settings, r2, db,
         render_clip(source, out, segment.start, segment.end, info, plan, ass, FONTS_DIR, tmpdir)
         thumb = tmpdir / "thumb.jpg"
         thumbnail(out, thumb)
-        clip_key = f"{job.prefix}/clips/{seg_row['rank']:02d}-{style}.mp4"
-        thumb_key = f"{job.prefix}/clips/{seg_row['rank']:02d}-{style}.jpg"
+        clip_key = f"{job.outputs}/clips/{seg_row['rank']:02d}-{style}.mp4"
+        thumb_key = f"{job.outputs}/clips/{seg_row['rank']:02d}-{style}.jpg"
         size = r2.upload(out, clip_key, "video/mp4")
         r2.upload(thumb, thumb_key, "image/jpeg")
         rendered = probe(out)

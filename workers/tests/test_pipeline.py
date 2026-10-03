@@ -119,7 +119,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "FACE_MODEL", ROOT / ".models" / "blaze_face_short_range.tflite")
     r2, db = FakeR2(tmp_path / "bucket"), FakeDB()
     job = JobRef(job_id=str(uuid.uuid4()), owner_id="anonymous", user_id=None)
-    source_key = f"{job.prefix}/source.mp4"
+    source_key = f"{job.sources}/source.mp4"
     src = r2._p(source_key)
     subprocess.run(
         ["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
@@ -146,7 +146,7 @@ def test_full_pipeline_produces_clip_segments_json_and_costs(env):
 
     detected = pipeline.detect(env.job, env.settings, env.r2, env.db, FakeMessages(), res)
     assert detected["segments"] == 1 and len(detected["to_render"]) == 1
-    segments_json = json.loads(env.r2.get_text(f"{env.job.prefix}/segments.json"))
+    segments_json = json.loads(env.r2.get_text(f"{env.job.outputs}/segments.json"))
     assert set(segments_json[0]) >= {"start", "end", "score_global", "hook", "autonomie",
                                      "intensite", "chute", "justification", "titre_propose"}
 

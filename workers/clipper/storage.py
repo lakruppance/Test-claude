@@ -6,8 +6,15 @@ import os
 from pathlib import Path
 
 
-def job_prefix(owner_id: str, job_id: str) -> str:
-    return f"users/{owner_id}/jobs/{job_id}"
+# Two top-level areas so bucket lifecycle rules (prefix-based) can expire them separately:
+#   sources/  uploaded videos and extracted audio, deleted after SOURCE_RETENTION_DAYS
+#   outputs/  transcript, segments and rendered clips, deleted after CLIP_RETENTION_DAYS
+def source_prefix(owner_id: str, job_id: str) -> str:
+    return f"sources/{owner_id}/{job_id}"
+
+
+def output_prefix(owner_id: str, job_id: str) -> str:
+    return f"outputs/{owner_id}/{job_id}"
 
 
 class R2:
