@@ -1,6 +1,12 @@
 # Phase 0 : cadrage technique
 
-Date : 2026-10-03. Statut : **en attente de validation**.
+Date : 2026-10-03. Statut : **validée le 2026-10-03**.
+
+Décisions validées :
+- file de tâches : option A, Trigger.dev pour l'orchestration et Modal pour le calcul ;
+- langues : français et anglais uniquement ;
+- plans tarifaires : validés tels que proposés en section 4 ;
+- staging : déployé via GitHub Actions, avec les secrets dans l'environnement GitHub « staging ».
 
 Ce document regroupe les décisions proposées pour la phase 0 : fournisseurs, architecture, coûts estimés, plans tarifaires, comptes à créer et écarts constatés avec le brief initial.
 

@@ -10,8 +10,6 @@ const schema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().min(1),
   R2_BUCKET: z.string().min(1),
   R2_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
-  WORKER_ENDPOINT_URL: z.string().url(),
-  WORKER_SHARED_SECRET: z.string().min(32),
   STAGING_BASIC_AUTH: z.string().optional(),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(5 * 1024 ** 3),
   CLIP_STYLE_DEFAULT: z.enum(["impact", "boite", "epure"]).default("impact"),
