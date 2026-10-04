@@ -184,3 +184,36 @@ def test_claude_account_errors_become_clear_pipeline_errors():
         with pytest.raises(PipelineError) as err:
             failing(status, cls, message).create(model="x")
         assert err.value.code == code
+
+
+UNSUPPORTED_SCHEMA_KEYS = {"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
+                           "minLength", "maxLength", "minItems", "maxItems", "uniqueItems"}
+
+
+def _check_schema(node, path="$"):
+    if isinstance(node, dict):
+        bad = UNSUPPORTED_SCHEMA_KEYS & node.keys()
+        assert not bad, f"{path}: unsupported by structured outputs: {sorted(bad)}"
+        if node.get("type") == "object":
+            assert node.get("additionalProperties") is False, f"{path}: needs additionalProperties: false"
+        for key, value in node.items():
+            _check_schema(value, f"{path}.{key}")
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            _check_schema(value, f"{path}[{i}]")
+
+
+def test_every_schema_sent_to_claude_is_accepted_by_structured_outputs():
+    from clipper.metadata import META_SCHEMA
+    from clipper.segments import CANDIDATES_SCHEMA
+
+    for schema in (CANDIDATES_SCHEMA, META_SCHEMA):
+        _check_schema(schema)
+
+
+def test_out_of_range_scores_are_clamped_not_rejected():
+    from clipper.segments import Candidate
+
+    c = Candidate(sentence_start=0, sentence_end=2, score_global=104, hook=-3, autonomie=55.6,
+                  intensite=50, chute=60, justification="j", titre_propose="t", accroche_ecran="a")
+    assert (c.score_global, c.hook, c.autonomie) == (100, 0, 56)

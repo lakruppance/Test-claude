@@ -7,7 +7,7 @@ import json
 import re
 from typing import Any, Protocol
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ValidationError, field_validator
 
 from .config import Settings
 from .costs import CostLedger
@@ -37,17 +37,24 @@ class Candidate(BaseModel):
 
     sentence_start: int
     sentence_end: int
-    score_global: int = Field(ge=0, le=100)
-    hook: int = Field(ge=0, le=100)
-    autonomie: int = Field(ge=0, le=100)
-    intensite: int = Field(ge=0, le=100)
-    chute: int = Field(ge=0, le=100)
+    score_global: int
+    hook: int
+    autonomie: int
+    intensite: int
+    chute: int
     justification: str
     titre_propose: str
     accroche_ecran: str
 
+    # Structured outputs cannot express numeric bounds: clamp here instead of rejecting.
+    @field_validator("score_global", "hook", "autonomie", "intensite", "chute", mode="before")
+    @classmethod
+    def _clamp_score(cls, value: Any) -> int:
+        return max(0, min(100, int(round(float(value)))))
 
-_SCORE = {"type": "integer", "minimum": 0, "maximum": 100}
+
+# No minimum/maximum: structured outputs reject numeric constraints (bounds are in the prompt).
+_SCORE = {"type": "integer", "description": "Score from 0 to 100"}
 CANDIDATES_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
