@@ -5,3 +5,10 @@ node_modules/
 .next/
 __pycache__/
 *.mp4
+.venv/
+workers/.fonts/
+workers/.models/
+.pytest_cache/
+.ruff_cache/
+supabase/.branches
+supabase/.temp

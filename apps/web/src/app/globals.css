@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Design tokens (docs/design/marque.md). One accent: gold. Light and dark follow the system. */
+:root {
+  --ink: #121314;
+  --paper: #fafaf8;
+  --surface: #ffffff;
+  --muted: #5b5e63;
+  --line: #e4e4e0;
+  --control: #86898e; /* form control borders: 3:1 against paper and surface */
+  --gold: #f5b000;
+  --gold-soft: #fff3cc;
+  --danger: #b42318;
+  --shadow: 18 19 20;
+  --focus: #121314;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #ededeb;
+    --paper: #0e0f10;
+    --surface: #17181a;
+    --muted: #a3a6ab;
+    --line: #2a2c2f;
+    --control: #6b6e73;
+    --gold-soft: #3a2e08;
+    --danger: #f97066;
+    --shadow: 0 0 0;
+    --focus: #f5b000;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-control: var(--control);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-danger: var(--danger);
+  --color-on-gold: #121314;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-display), var(--font-geist-sans), ui-sans-serif, sans-serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a,
+button,
+input,
+select,
+label,
+summary {
+  touch-action: manipulation;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::selection {
+  background: var(--gold);
+  color: #121314;
+}

@@ -1,0 +1,178 @@
+name: Deploy staging
+
+# Secrets live in the GitHub "staging" environment (Settings > Environments > staging).
+# They are passed to each platform by this workflow and never printed.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.119.0
+      - run: supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
+      - run: supabase db push
+
+  storage:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --with boto3 python scripts/setup_r2.py
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          SOURCE_RETENTION_DAYS: ${{ vars.SOURCE_RETENTION_DAYS || '7' }}
+          CLIP_RETENTION_DAYS: ${{ vars.CLIP_RETENTION_DAYS || '90' }}
+
+  worker:
+    needs: database
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      endpoint: ${{ steps.deploy.outputs.endpoint }}
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+      MODAL_ENVIRONMENT: ${{ vars.MODAL_ENVIRONMENT || 'staging' }}
+    defaults:
+      run:
+        working-directory: workers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv -p 3.11 && uv pip install modal==1.6.1
+      - name: Sync worker secrets to Modal (written to a temp file, never on the command line)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          ASSEMBLYAI_API_KEY: ${{ secrets.ASSEMBLYAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WORKER_SHARED_SECRET: ${{ secrets.WORKER_SHARED_SECRET }}
+          CLAUDE_MODEL_DEFAULT: ${{ vars.CLAUDE_MODEL_DEFAULT || 'claude-sonnet-5-5' }}
+          CLAUDE_MODEL_LIGHT: ${{ vars.CLAUDE_MODEL_LIGHT || 'claude-haiku-4-5' }}
+          CLAUDE_EFFORT: ${{ vars.CLAUDE_EFFORT || 'medium' }}
+          ASSEMBLYAI_SPEECH_MODELS: ${{ vars.ASSEMBLYAI_SPEECH_MODELS || 'universal' }}
+          MAX_SOURCE_MINUTES: ${{ vars.MAX_SOURCE_MINUTES || '180' }}
+          CLIPS_TO_RENDER: ${{ vars.CLIPS_TO_RENDER || '3' }}
+          YTDLP_ENABLED: ${{ vars.YTDLP_ENABLED || 'true' }}
+          MAX_UPLOAD_BYTES: ${{ vars.MAX_UPLOAD_BYTES || '5368709120' }}
+          # Optional, only with explicit approval (see docs/phase-3.md)
+          YTDLP_PROXY_URL: ${{ secrets.YTDLP_PROXY_URL }}
+          WATERMARK_TEXT: ${{ vars.WATERMARK_TEXT }}
+        run: |
+          umask 077
+          tmp="$(mktemp)"
+          python3 - "$tmp" <<'PY'
+          import json, os, sys
+          keys = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "R2_ENDPOINT",
+                  "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "ASSEMBLYAI_API_KEY",
+                  "ANTHROPIC_API_KEY", "WORKER_SHARED_SECRET", "CLAUDE_MODEL_DEFAULT",
+                  "CLAUDE_MODEL_LIGHT", "CLAUDE_EFFORT", "ASSEMBLYAI_SPEECH_MODELS",
+                  "MAX_SOURCE_MINUTES", "CLIPS_TO_RENDER"]
+          missing = [k for k in keys if not os.environ.get(k)]
+          if missing:
+              sys.exit(f"Missing staging settings: {', '.join(missing)}")
+          optional = ["YTDLP_ENABLED", "MAX_UPLOAD_BYTES", "YTDLP_PROXY_URL", "WATERMARK_TEXT"]
+          values = {k: os.environ[k] for k in keys}
+          values.update({k: os.environ[k] for k in optional if os.environ.get(k)})
+          json.dump(values, open(sys.argv[1], "w"))
+          PY
+          uv run modal secret create clipper-secrets --from-json "$tmp" --force
+          rm -f "$tmp"
+      - id: deploy
+        run: |
+          uv run modal deploy modal_app.py | tee deploy.log
+          endpoint="$(grep -oE 'https://[a-z0-9-]+--clipper-api[a-z0-9-]*\.modal\.run' deploy.log | head -1)"
+          echo "endpoint=${endpoint}" >> "$GITHUB_OUTPUT"
+      - name: Health check
+        run: curl -fsS "${{ steps.deploy.outputs.endpoint }}/health"
+
+  orchestrator:
+    needs: worker
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npx trigger.dev deploy --env "${{ vars.TRIGGER_DEPLOY_ENV || 'staging' }}"
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+          TRIGGER_PROJECT_REF: ${{ vars.TRIGGER_PROJECT_REF }}
+          # Synced into the Trigger.dev environment by trigger.config.ts (syncEnvVars)
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          WORKER_ENDPOINT_URL: ${{ needs.worker.outputs.endpoint }}
+          WORKER_SHARED_SECRET: ${{ secrets.WORKER_SHARED_SECRET }}
+
+  billing:
+    # Stripe products, prices (lookup keys) and portal settings. Test mode key on staging.
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: node scripts/setup-stripe.mjs
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+  web:
+    needs: [orchestrator, storage, billing]
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.NEXT_PUBLIC_APP_URL }}
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm i -g vercel@latest
+      # The Vercel project is a dedicated staging project; its runtime env vars are set in the
+      # Vercel dashboard (see docs/phase-1.md).
+      - run: vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+      - run: vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+      - run: vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"

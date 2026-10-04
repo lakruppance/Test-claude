@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npx next typegen
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: No server secret names in the client bundle
+        run: |
+          if grep -rlE "SERVICE_ROLE|R2_SECRET|WORKER_SHARED_SECRET|ANTHROPIC_API_KEY|STRIPE_SECRET" .next/static; then
+            echo "::error::Server secret referenced in client bundle"; exit 1
+          fi
+
+  workers:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: uv venv -p 3.11 && uv pip install -e ".[dev]"
+      - run: ../scripts/fetch_assets.sh
+      - run: uv run ruff check clipper modal_app.py tests
+      - run: uv run pytest -q
+
+  worker-image:
+    name: worker image (local stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t clipper-worker:ci workers
+      - run: docker run --rm clipper-worker:ci python -c "import local_server, mediapipe, faster_whisper; print('ok')"
+
+  database:
+    name: database (RLS tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.119.0
+      - run: supabase start -x studio,imgproxy,vector,logflare,edge-runtime,supavisor,storage-api,realtime,mailpit
+      - run: supabase test db
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Two-account isolation tests through the API
+        working-directory: apps/web
+        run: |
+          npm ci
+          eval "$(supabase status -o env | sed -e 's/^API_URL=/export NEXT_PUBLIC_SUPABASE_URL=/' -e 's/^ANON_KEY=/export NEXT_PUBLIC_SUPABASE_ANON_KEY=/' -e 's/^SERVICE_ROLE_KEY=/export SUPABASE_SERVICE_ROLE_KEY=/' | grep '^export')"
+          npm run test:integration
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
