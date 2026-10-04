@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
+import { buttonClass } from "@/components/ui";
 import { t } from "@/i18n/messages";
 import {
   forgetUpload,
@@ -14,20 +15,20 @@ import {
 const STYLES = ["impact", "boite", "epure"] as const;
 type Mode = "file" | "link";
 
-const field = "rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
+const field = "rounded-[10px] border border-line bg-surface p-2.5 text-sm text-ink";
 
 async function errorCode(res: Response) {
   return ((await res.json().catch(() => ({}))) as { error?: string }).error;
 }
 
-export function UploadForm() {
+export function UploadForm(props: { initialMode?: Mode; defaultStyle?: (typeof STYLES)[number]; defaultWithHook?: boolean }) {
   const router = useRouter();
   const ids = { file: useId(), help: useId(), link: useId(), linkHelp: useId(), style: useId(), hook: useId(), rights: useId() };
-  const [mode, setMode] = useState<Mode>("file");
+  const [mode, setMode] = useState<Mode>(props.initialMode ?? "file");
   const [file, setFile] = useState<File | null>(null);
   const [link, setLink] = useState("");
-  const [style, setStyle] = useState<(typeof STYLES)[number]>("impact");
-  const [withHook, setWithHook] = useState(true);
+  const [style, setStyle] = useState<(typeof STYLES)[number]>(props.defaultStyle ?? "impact");
+  const [withHook, setWithHook] = useState(props.defaultWithHook ?? true);
   const [rights, setRights] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [resuming, setResuming] = useState(false);
@@ -112,11 +113,11 @@ export function UploadForm() {
   const busy = progress !== null;
   const ready = rights && (mode === "file" ? Boolean(file) : link.trim().length > 8);
   const tab = (m: Mode) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium ${mode === m ? "bg-white shadow-sm dark:bg-zinc-800" : "text-zinc-600 dark:text-zinc-400"}`;
+    `rounded-md px-3 py-1.5 text-sm font-medium ${mode === m ? "bg-surface shadow-sm" : "text-muted"}`;
 
   return (
     <form onSubmit={submit} className="grid gap-6">
-      <div role="tablist" aria-label={t("upload.heading")} className="inline-flex justify-self-start rounded-lg bg-zinc-200/70 p-1 dark:bg-zinc-900">
+      <div role="tablist" aria-label={t("upload.heading")} className="inline-flex justify-self-start rounded-lg bg-line/60 p-1">
         <button type="button" role="tab" aria-selected={mode === "file"} className={tab("file")} onClick={() => setMode("file")} disabled={busy}>
           {t("new.tab.file")}
         </button>
@@ -131,7 +132,7 @@ export function UploadForm() {
           <input id={ids.file} type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
             aria-describedby={ids.help} required disabled={busy} className={`block w-full ${field}`}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-          <p id={ids.help} className="text-sm text-zinc-600 dark:text-zinc-400">{t("upload.fileHelp")}</p>
+          <p id={ids.help} className="text-sm text-muted">{t("upload.fileHelp")}</p>
         </div>
       ) : (
         <div className="grid gap-2">
@@ -139,8 +140,8 @@ export function UploadForm() {
           <input id={ids.link} type="url" inputMode="url" required disabled={busy} value={link}
             onChange={(e) => setLink(e.target.value)} aria-describedby={ids.linkHelp}
             placeholder="https://" className={field} />
-          <p id={ids.linkHelp} className="text-sm text-zinc-600 dark:text-zinc-400">{t("new.linkHelp")}</p>
-          {/youtu/.test(link) && <p className="text-sm text-zinc-600 dark:text-zinc-400">{t("new.youtubeNote")}</p>}
+          <p id={ids.linkHelp} className="text-sm text-muted">{t("new.linkHelp")}</p>
+          {/youtu/.test(link) && <p className="text-sm text-muted">{t("new.youtubeNote")}</p>}
         </div>
       )}
 
@@ -156,13 +157,13 @@ export function UploadForm() {
 
       <label htmlFor={ids.hook} className="flex items-center gap-3 text-sm">
         <input id={ids.hook} type="checkbox" checked={withHook} disabled={busy}
-          onChange={(e) => setWithHook(e.target.checked)} className="size-4 accent-emerald-600" />
+          onChange={(e) => setWithHook(e.target.checked)} className="size-4 accent-gold" />
         {t("upload.hook")}
       </label>
 
       <label htmlFor={ids.rights} className="flex items-start gap-3 text-sm">
         <input id={ids.rights} type="checkbox" checked={rights} required disabled={busy}
-          onChange={(e) => setRights(e.target.checked)} className="mt-0.5 size-4 accent-emerald-600" />
+          onChange={(e) => setRights(e.target.checked)} className="mt-0.5 size-4 accent-gold" />
         {t("upload.rights")}
       </label>
 
@@ -171,13 +172,13 @@ export function UploadForm() {
           <span className="text-sm">
             {resuming ? t("upload.resuming") : t("upload.uploading")} : {Math.round((progress ?? 0) * 100)} %
           </span>
-          <progress max={1} value={progress ?? 0} className="h-2 w-full accent-emerald-600" />
+          <progress max={1} value={progress ?? 0} className="h-2 w-full accent-gold" />
         </div>
       )}
-      {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
       <button type="submit" disabled={!ready || busy}
-        className="justify-self-start rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50">
+        className={buttonClass("primary", "lg") + " justify-self-start"}>
         {t("upload.submit")}
       </button>
     </form>

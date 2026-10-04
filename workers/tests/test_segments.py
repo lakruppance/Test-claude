@@ -92,6 +92,15 @@ def test_overlaps_are_removed_keeping_best_score():
     assert [k.score_global for k in kept] == [90, 60]
 
 
+def test_back_to_back_segments_are_both_kept():
+    t = make_transcript(ten_word_sentences(40))
+    s = build_sentences(t)
+    a = to_segment(cand(0, 6, 70), s, t, settings())
+    b = to_segment(cand(7, 13, 60), s, t, settings())
+    assert b.start < a.end  # padding makes them touch
+    assert len(remove_overlaps([a, b])) == 2
+
+
 class FakeMessages:
     def __init__(self, payloads):
         self.payloads = list(payloads)
@@ -129,3 +138,22 @@ def test_local_runtime_reports_free_compute_with_cloud_equivalent(monkeypatch):
     line = ledger.compute("render", 100, 4, 8)
     assert line.provider == "local" and line.usd == 0
     assert line.meta["cloud_equivalent_usd"] > 0
+
+
+def test_platform_metadata_is_cleaned_and_never_fails():
+    from clipper import metadata
+    from clipper.devfakes import FakeMessages as DevFake
+    from clipper.models import Segment
+
+    seg = Segment(start=0, end=30, score_global=80, hook=80, autonomie=80, intensite=80, chute=80,
+                  justification="j", titre_propose="Titre", sentence_start=0, sentence_end=2, text="Bonjour.")
+    ledger = CostLedger(Settings().prices)
+    meta = metadata.generate(DevFake(), Settings(), ledger, [seg, seg], "fr")
+    assert set(meta) == {1, 2} and meta[1]["youtube"]["hashtags"][0] == "#shorts"
+    assert metadata._clean_tags(["shorts", "#Mot clé!", "#shorts", "##x"], 5) == ["#shorts", "#Motclé", "#x"]
+
+    class Broken:
+        def create(self, **kwargs):
+            raise RuntimeError("API down")
+
+    assert metadata.generate(Broken(), Settings(), ledger, [seg], "fr") == {}

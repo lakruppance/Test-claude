@@ -229,11 +229,16 @@ def to_segment(
     )
 
 
+# Back-to-back passages share up to LEAD_IN + TAIL_OUT of padding: that is not a real overlap.
+OVERLAP_TOLERANCE = LEAD_IN + TAIL_OUT
+
+
 def remove_overlaps(segments: list[Segment]) -> list[Segment]:
     """Greedy by score: keep the best segment, drop anything overlapping it, repeat."""
     kept: list[Segment] = []
     for seg in sorted(segments, key=lambda s: (-s.score_global, s.start)):
-        if all(seg.end <= k.start or seg.start >= k.end for k in kept):
+        if all(seg.end <= k.start + OVERLAP_TOLERANCE or seg.start >= k.end - OVERLAP_TOLERANCE
+               for k in kept):
             kept.append(seg)
     return sorted(kept, key=lambda s: -s.score_global)
 

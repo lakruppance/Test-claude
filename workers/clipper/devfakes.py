@@ -15,10 +15,31 @@ def assert_dev(feature: str) -> None:
 
 
 class FakeMessages:
-    """Returns the first two 25-45 s sentence ranges of each window as candidates."""
+    """Returns the first three 25-45 s sentence ranges of each window as candidates, and generic
+    metadata for the publishing step."""
+
+    def _metadata(self, kwargs: dict[str, Any]) -> Any:
+        import re
+
+        ranks = [int(r) for r in re.findall(r"\[clip (\d+)\]", kwargs["messages"][0]["content"])]
+        items = [{"rank": r,
+                  "youtube": {"title": f"Clip de test {r}", "description": "Test local.",
+                              "hashtags": ["#shorts", "#test"]},
+                  "tiktok": {"caption": f"Clip de test {r}", "hashtags": ["#test"]}}
+                 for r in ranks]
+        return SimpleNamespace(
+            model="dev-fake", stop_reason="end_turn",
+            content=[SimpleNamespace(type="text", text=json.dumps({"items": items}))],
+            usage=SimpleNamespace(input_tokens=0, output_tokens=0, cache_read_input_tokens=0,
+                                  cache_creation_input_tokens=0),
+        )
 
     def create(self, **kwargs: Any) -> Any:
         import re
+
+        schema = kwargs.get("output_config", {}).get("format", {}).get("schema", {})
+        if "items" in schema.get("properties", {}):
+            return self._metadata(kwargs)
 
         lines = kwargs["messages"][0]["content"].splitlines()
         spans = [
@@ -27,7 +48,7 @@ class FakeMessages:
             if m
         ]
         candidates, i = [], 0
-        while i < len(spans) and len(candidates) < 2:
+        while i < len(spans) and len(candidates) < 3:
             j = i
             while j < len(spans) and spans[j][2] - spans[i][1] < 25:
                 j += 1

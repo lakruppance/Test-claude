@@ -1,8 +1,8 @@
-# Clips SaaS (nom provisoire)
+# Pépite (nom provisoire)
 
 SaaS qui génère des clips verticaux sous-titrés à partir de vidéos longues (upload, Drive/Dropbox, YouTube).
 
-État : **phase 3, ingestion** (voir [`docs/phase-3.md`](docs/phase-3.md) ; précédentes : [phase 2](docs/phase-2.md), [phase 1](docs/phase-1.md)). Voir [`docs/phase-0.md`](docs/phase-0.md) pour les choix techniques, les coûts estimés et les comptes à créer, et [`.env.example`](.env.example) pour les variables d'environnement.
+État : **phase 4, identité et application complète** (voir [`docs/phase-4.md`](docs/phase-4.md) ; précédentes : [phase 3](docs/phase-3.md), [phase 2](docs/phase-2.md), [phase 1](docs/phase-1.md)). Identité : [`docs/design/marque.md`](docs/design/marque.md). Voir [`docs/phase-0.md`](docs/phase-0.md) pour les choix techniques, les coûts estimés et les comptes à créer, et [`.env.example`](.env.example) pour les variables d'environnement.
 
 ## Tester en local, sans abonnement
 

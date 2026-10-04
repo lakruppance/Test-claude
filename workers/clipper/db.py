@@ -30,6 +30,10 @@ class Database:
         response.raise_for_status()
         return response.json()
 
+    def update(self, table: str, values: dict[str, Any], **filters: str) -> None:
+        params = {k: f"eq.{v}" for k, v in filters.items()}
+        self._client.patch(f"/{table}", json=values, params=params).raise_for_status()
+
     def delete(self, table: str, **filters: str) -> None:
         params = {k: f"eq.{v}" for k, v in filters.items()}
         self._client.delete(f"/{table}", params=params).raise_for_status()

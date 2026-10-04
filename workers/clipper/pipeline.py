@@ -129,13 +129,17 @@ def transcribe(job: JobRef, settings: Settings, r2, db, provider, resources: Res
 
 def detect(job: JobRef, settings: Settings, r2, db, messages, resources: Resources,
            attempt: int = 1) -> dict[str, Any]:
+    from . import metadata
     from .segments import detect_segments
 
     started = time.monotonic()
     ledger = CostLedger(settings.prices)
     transcript = Transcript.model_validate_json(r2.get_text(f"{job.outputs}/transcript.json"))
+    platform_meta: dict[int, dict[str, Any]] = {}
     try:
         segments = detect_segments(messages, transcript, settings, ledger)
+        platform_meta = metadata.generate(messages, settings, ledger, segments,
+                                          transcript.language)
     finally:
         ledger.compute("detect", time.monotonic() - started, resources.cores, resources.memory_gib)
         cost = _record_costs(db, job, "detect", ledger, attempt)
@@ -154,6 +158,9 @@ def detect(job: JobRef, settings: Settings, r2, db, messages, resources: Resourc
                 "rank": rank,
                 "start_seconds": s.start,
                 "end_seconds": s.end,
+                "original_start_seconds": s.start,
+                "original_end_seconds": s.end,
+                "platform_meta": platform_meta.get(rank, {}),
                 "score_global": s.score_global,
                 "hook": s.hook,
                 "autonomie": s.autonomie,
@@ -178,7 +185,9 @@ def detect(job: JobRef, settings: Settings, r2, db, messages, resources: Resourc
 
 
 def render(job: JobRef, segment_id: str, style: str, settings: Settings, r2, db,
-           resources: Resources, attempt: int = 1, with_hook: bool = True) -> dict[str, Any]:
+           resources: Resources, attempt: int = 1, with_hook: bool = True,
+           clip_id: str | None = None) -> dict[str, Any]:
+    """Renders a segment. With clip_id, re-renders that existing clip (new bounds or style)."""
     from .reframe import FaceDetector, plan_crop, probe
     from .render import render_clip, thumbnail
     from .subtitles import STYLES, build_ass
@@ -203,7 +212,14 @@ def render(job: JobRef, segment_id: str, style: str, settings: Settings, r2, db,
 
     with tempfile.TemporaryDirectory() as tmp:
         tmpdir = Path(tmp)
-        source = r2.download(job_row["source_key"], tmpdir / "source")
+        try:
+            source = r2.download(job_row["source_key"], tmpdir / "source")
+        except Exception as exc:
+            if "404" in str(exc) or "NoSuchKey" in str(exc) or "Not Found" in str(exc):
+                raise PipelineError("source_expired",
+                                    "The source video was deleted after its retention period"
+                                    ) from exc
+            raise
         info = probe(source)
         detector = FaceDetector(FACE_MODEL) if FACE_MODEL.exists() else None
         try:
@@ -217,29 +233,33 @@ def render(job: JobRef, segment_id: str, style: str, settings: Settings, r2, db,
         render_clip(source, out, segment.start, segment.end, info, plan, ass, FONTS_DIR, tmpdir)
         thumb = tmpdir / "thumb.jpg"
         thumbnail(out, thumb)
-        clip_key = f"{job.outputs}/clips/{seg_row['rank']:02d}-{style}.mp4"
-        thumb_key = f"{job.outputs}/clips/{seg_row['rank']:02d}-{style}.jpg"
+        version = int(time.time())
+        clip_key = f"{job.outputs}/clips/{seg_row['rank']:02d}-{style}-{version}.mp4"
+        thumb_key = f"{job.outputs}/clips/{seg_row['rank']:02d}-{style}-{version}.jpg"
         size = r2.upload(out, clip_key, "video/mp4")
         r2.upload(thumb, thumb_key, "image/jpeg")
         rendered = probe(out)
     ledger.storage("clip", size, 90)
-    db.insert(
-        "clips",
-        {
-            "job_id": job.job_id,
-            "segment_id": segment_id,
-            "user_id": job.user_id,
-            "style": style,
-            "reframe_mode": plan.mode,
-            "storage_key": clip_key,
-            "thumbnail_key": thumb_key,
-            "width": rendered.width,
-            "height": rendered.height,
-            "duration_seconds": rendered.duration,
-            "bytes": size,
-        },
-        upsert_on="segment_id,style",
-    )
+    clip_row = {
+        "job_id": job.job_id,
+        "segment_id": segment_id,
+        "user_id": job.user_id,
+        "style": style,
+        "with_hook": with_hook,
+        "reframe_mode": plan.mode,
+        "storage_key": clip_key,
+        "thumbnail_key": thumb_key,
+        "width": rendered.width,
+        "height": rendered.height,
+        "duration_seconds": rendered.duration,
+        "bytes": size,
+        "status": "pending_review",
+        "render_error": None,
+    }
+    if clip_id:
+        db.update("clips", clip_row, id=clip_id, job_id=job.job_id)
+    else:
+        db.insert("clips", clip_row, upsert_on="segment_id,style")
     ledger.compute("render", time.monotonic() - started, resources.cores, resources.memory_gib)
     cost = _record_costs(db, job, "render", ledger, attempt)
     return {"segment_id": segment_id, "storage_key": clip_key, "reframe_mode": plan.mode,

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { t } from "@/i18n/messages";
+import { formatDateTime } from "@/lib/format";
 
 export type ChannelItem = {
   id: string;
@@ -13,8 +14,8 @@ export type ChannelItem = {
   last_error: string | null;
 };
 
-const field = "rounded-lg border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
-const ghost = "rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 disabled:opacity-50";
+const field = "rounded-[10px] border border-line bg-surface p-2.5 text-sm";
+const ghost = "rounded-full border border-line bg-surface px-4 py-1.5 text-sm font-medium disabled:opacity-50";
 
 async function call(url: string, init: RequestInit) {
   const res = await fetch(url, { ...init, headers: { "content-type": "application/json" } });
@@ -66,23 +67,23 @@ export function ChannelsManager(props: {
 
   return (
     <div className="grid gap-8">
-      {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
       {props.channels.length === 0 ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">{t("channels.empty")}</p>
+        <p className="text-sm text-muted">{t("channels.empty")}</p>
       ) : (
-        <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+        <ul className="divide-y divide-line">
           {props.channels.map((c) => (
             <li key={c.id} className="grid gap-3 py-4 md:grid-cols-[1fr_auto] md:items-center">
               <div className="grid gap-1">
                 <a href={`https://www.youtube.com/channel/${c.youtube_channel_id}`} target="_blank" rel="noreferrer"
                   className="font-medium underline-offset-4 hover:underline">{c.title}</a>
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {t("channels.lastChecked", { date: c.last_checked_at ? new Date(c.last_checked_at).toLocaleString("fr-FR") : t("channels.never") })}
+                <span className="text-sm text-muted">
+                  {t("channels.lastChecked", { date: c.last_checked_at ? formatDateTime(c.last_checked_at) : t("channels.never") })}
                   {c.last_error && ` | ${t(`channels.error.${c.last_error}`)}`}
                 </span>
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="size-4 accent-emerald-600" checked={c.auto_process}
+                  <input type="checkbox" className="size-4 accent-gold" checked={c.auto_process}
                     disabled={!props.canAutoProcess || busy !== null}
                     onChange={(e) => run(`auto-${c.id}`, () => call(`/api/channels/${c.id}`, { method: "PATCH", body: JSON.stringify({ autoProcess: e.target.checked }) }))} />
                   {t("channels.auto")}
@@ -94,7 +95,10 @@ export function ChannelsManager(props: {
                   {t("channels.checkNow")}
                 </button>
                 <button type="button" className={ghost} disabled={busy !== null}
-                  onClick={() => run(`del-${c.id}`, () => call(`/api/channels/${c.id}`, { method: "DELETE" }))}>
+                  onClick={() => {
+                    if (window.confirm(t("channels.removeConfirm", { name: c.title ?? "" })))
+                      run(`del-${c.id}`, () => call(`/api/channels/${c.id}`, { method: "DELETE" }));
+                  }}>
                   {t("channels.remove")}
                 </button>
               </div>
@@ -109,18 +113,18 @@ export function ChannelsManager(props: {
           <div className="grid gap-2">
             <label htmlFor={ids.input} className="text-sm font-medium">{t("channels.input")}</label>
             <input id={ids.input} name="channel" required className={field} aria-describedby={ids.help} placeholder="https://www.youtube.com/@" />
-            <p id={ids.help} className="text-sm text-zinc-600 dark:text-zinc-400">{t("channels.inputHelp")}</p>
+            <p id={ids.help} className="text-sm text-muted">{t("channels.inputHelp")}</p>
           </div>
           <label htmlFor={ids.auto} className="flex items-center gap-3 text-sm">
-            <input id={ids.auto} name="auto" type="checkbox" className="size-4 accent-emerald-600" disabled={!props.canAutoProcess} />
+            <input id={ids.auto} name="auto" type="checkbox" className="size-4 accent-gold" disabled={!props.canAutoProcess} />
             {t("channels.auto")}
           </label>
           <label htmlFor={ids.rights} className="flex items-start gap-3 text-sm">
-            <input id={ids.rights} name="rights" type="checkbox" required className="mt-0.5 size-4 accent-emerald-600" />
+            <input id={ids.rights} name="rights" type="checkbox" required className="mt-0.5 size-4 accent-gold" />
             {t("channels.rights")}
           </label>
           <button type="submit" disabled={busy !== null}
-            className="justify-self-start rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+            className="justify-self-start rounded-lg bg-gold px-5 py-2.5 text-sm font-semibold text-on-gold disabled:opacity-50">
             {t("channels.add")}
           </button>
         </form>
@@ -135,7 +139,7 @@ export function DetectedVideos({ videos }: { videos: DetectedVideo[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  if (videos.length === 0) return <p className="text-sm text-zinc-600 dark:text-zinc-400">{t("channels.noNewVideos")}</p>;
+  if (videos.length === 0) return <p className="text-sm text-muted">{t("channels.noNewVideos")}</p>;
 
   async function processVideo(id: string) {
     setBusy(id);
@@ -152,16 +156,16 @@ export function DetectedVideos({ videos }: { videos: DetectedVideo[] }) {
 
   return (
     <div className="grid gap-3">
-      {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>}
-      <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+      <ul className="divide-y divide-line">
         {videos.map((v) => (
           <li key={v.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
             <div className="grid gap-0.5">
               <a href={`https://www.youtube.com/watch?v=${v.youtube_video_id}`} target="_blank" rel="noreferrer" className="font-medium hover:underline">{v.title}</a>
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">{new Date(v.published_at).toLocaleString("fr-FR")}</span>
+              <span className="text-sm text-muted">{formatDateTime(v.published_at)}</span>
             </div>
             <button type="button" disabled={busy !== null} onClick={() => processVideo(v.id)}
-              className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              className="rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-on-gold disabled:opacity-50">
               {t("channels.process")}
             </button>
           </li>

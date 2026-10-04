@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAccount } from "@/lib/account";
 import { summarizeCosts } from "@/lib/costs";
 import { signedDownloadUrl } from "@/lib/r2";
+import type { TimedWord } from "@/lib/snap";
 import { outputPrefix } from "@/lib/storage-keys";
 import { currentUser, supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -22,10 +23,11 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/jobs/[id]">
     .maybeSingle();
   if (!job) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const [steps, segments, clips] = await Promise.all([
+  const [steps, segments, clips, transcript] = await Promise.all([
     db.from("job_steps").select("step, status, attempts, started_at, finished_at, error_code").eq("job_id", id),
     db.from("segments").select("*").eq("job_id", id).order("rank"),
     db.from("clips").select("*").eq("job_id", id),
+    db.from("transcripts").select("words").eq("job_id", id).maybeSingle(),
   ]);
 
   const clipsWithUrls = await Promise.all(
@@ -58,8 +60,24 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/jobs/[id]">
       segments: segments.data ?? [],
       clips: clipsWithUrls,
       segments_json_url: segmentsJsonUrl,
+      transcript: toSentences((transcript.data?.words ?? []) as TimedWord[]),
       costs,
     },
     { headers: { "cache-control": "no-store" } },
   );
+}
+
+// Readable transcript: sentences with their time range (words grouped at final punctuation).
+function toSentences(words: TimedWord[]) {
+  const out: { start: number; end: number; text: string }[] = [];
+  let current: TimedWord[] = [];
+  for (const w of words) {
+    current.push(w);
+    if (/[.!?…]$/.test(w.text) || current.length >= 40) {
+      out.push({ start: current[0].start, end: w.end, text: current.map((x) => x.text).join(" ") });
+      current = [];
+    }
+  }
+  if (current.length) out.push({ start: current[0].start, end: current[current.length - 1].end, text: current.map((x) => x.text).join(" ") });
+  return out;
 }

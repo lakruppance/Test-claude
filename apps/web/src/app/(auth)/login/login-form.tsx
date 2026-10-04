@@ -32,7 +32,7 @@ export function LoginForm({ next, initialError }: { next?: string; initialError?
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("auth.login.title")}</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight">{t("auth.login.title")}</h1>
       <GoogleButton next={target} />
       <form onSubmit={submit} className="grid gap-5">
         <Field label={t("auth.email")} type="email" name="email" autoComplete="email" />

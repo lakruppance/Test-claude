@@ -65,6 +65,11 @@ class FakeDB:
             out.append(row)
         return out
 
+    def update(self, table, values, **filters):
+        for r in self.tables.get(table, []):
+            if all(str(r.get(k)) == v for k, v in filters.items()):
+                r.update(values)
+
     def delete(self, table, **filters):
         self.tables[table] = [
             r for r in self.tables.get(table, [])
@@ -90,6 +95,9 @@ class FakeProvider:
 
 class FakeMessages:
     def create(self, **kwargs):
+        if "items" in kwargs.get("output_config", {}).get("format", {}).get("schema", {}).get("properties", {}):
+            from clipper.devfakes import FakeMessages as DevFake
+            return DevFake().create(**kwargs)
         payload = {"candidates": [{
             "sentence_start": 1, "sentence_end": 4, "score_global": 86, "hook": 90,
             "autonomie": 80, "intensite": 75, "chute": 82, "justification": "Clear takeaway.",
@@ -160,9 +168,42 @@ def test_full_pipeline_produces_clip_segments_json_and_costs(env):
     costs = env.db.tables["cost_events"]
     assert {c["provider"] for c in costs} == {"modal", "assemblyai", "anthropic", "r2"}
     assert all(c["usd"] >= 0 for c in costs)
+    seg = env.db.tables["segments"][0]
+    assert seg["platform_meta"]["youtube"]["hashtags"][0] == "#shorts"
+    assert seg["original_start_seconds"] == seg["start_seconds"]
+    assert clip["status"] == "pending_review" and clip["with_hook"] is True
+
+    # Re-render the same clip with new bounds and another style: same row, new file
+    seg["start_seconds"], seg["end_seconds"] = seg["start_seconds"] + 2, seg["end_seconds"] - 2
+    old_key = clip["storage_key"]
+    import time as _t
+    _t.sleep(1.1)
+    pipeline.render(env.job, seg["id"], "epure", env.settings, env.r2, env.db, Resources(4, 8),
+                    with_hook=False, clip_id=clip["id"])
+    assert len(env.db.tables["clips"]) == 1
+    clip = env.db.tables["clips"][0]
+    assert clip["style"] == "epure" and clip["with_hook"] is False and clip["storage_key"] != old_key
+    assert 1 <= clip["duration_seconds"] <= seg["end_seconds"] - seg["start_seconds"] + 0.5
+
     # Re-running detect is idempotent (no duplicated segments)
     pipeline.detect(env.job, env.settings, env.r2, env.db, FakeMessages(), res)
     assert len(env.db.tables["segments"]) == 1
+
+
+def test_render_after_source_expiry_is_a_clear_error(env):
+    pipeline.prepare(env.job, env.settings, env.r2, env.db, Resources(2, 4))
+    transcript = synthetic_transcript(40)
+    pipeline.transcribe(env.job, env.settings, env.r2, env.db, FakeProvider(transcript), Resources(1, 1))
+    detected = pipeline.detect(env.job, env.settings, env.r2, env.db, FakeMessages(), Resources(1, 1))
+    (env.r2.root / env.db.tables["jobs"][0]["source_key"]).unlink()
+
+    def missing(key, dest):
+        raise RuntimeError("An error occurred (404) when calling the HeadObject operation: Not Found")
+
+    env.r2.download = missing
+    with pytest.raises(PipelineError) as err:
+        pipeline.render(env.job, detected["to_render"][0], "impact", env.settings, env.r2, env.db, Resources(4, 8))
+    assert err.value.code == "source_expired"
 
 
 def test_source_too_long_is_a_clear_non_retryable_error(env):

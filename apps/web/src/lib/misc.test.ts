@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { messages } from "@/i18n/messages";
 import { checkBasicAuth } from "./basic-auth";
 import { summarizeCosts } from "./costs";
 import { overallProgress } from "./progress";
@@ -52,5 +53,21 @@ describe("overallProgress", () => {
     expect(overallProgress("prepare", 0)).toBe(6);
     expect(overallProgress("render", 0.5)).toBe(77.5);
     expect(overallProgress("render", 2)).toBe(100);
+  });
+});
+
+describe("i18n catalogs", () => {
+  it("has the same keys and placeholders in French and English", () => {
+    const fr = messages.fr as Record<string, string>;
+    const en = messages.en as Record<string, string>;
+    expect(Object.keys(en).sort()).toEqual(Object.keys(fr).sort());
+    const vars = (s: string) => (s.match(/\{\w+\}/g) ?? []).sort();
+    for (const key of Object.keys(fr)) expect(vars(en[key]), key).toEqual(vars(fr[key]));
+  });
+
+  it("uses no em dashes in copy", () => {
+    for (const text of [...Object.values(messages.fr), ...Object.values(messages.en)]) {
+      expect(text).not.toContain("—");
+    }
   });
 });

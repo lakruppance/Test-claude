@@ -11,6 +11,7 @@ export type StepPayload = {
   segment_id?: string;
   style?: string;
   with_hook?: boolean;
+  clip_id?: string;
 };
 
 export type CallStatus =

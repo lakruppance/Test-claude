@@ -5,6 +5,7 @@ import { RIGHTS_STATEMENT, RIGHTS_STATEMENT_VERSION } from "./rights";
 import { sourcePrefix } from "./storage-keys";
 import { supabaseAdmin } from "./supabase-admin";
 import type { processVideo } from "../trigger/process-video";
+import type { rerenderClip } from "../trigger/rerender-clip";
 
 export type RightsContext = {
   contentKind: "upload" | "drive" | "dropbox" | "youtube" | "channel";
@@ -84,4 +85,15 @@ export async function enqueueJob(jobId: string, userId: string) {
     { idempotencyKey: `process-video-${jobId}`, tags: [`job_${jobId}`, `user_${userId}`] },
   );
   await db.from("jobs").update({ status: "queued", trigger_run_id: handle.id }).eq("id", jobId);
+}
+
+export async function enqueueRerender(clipId: string) {
+  if (env().ORCHESTRATOR === "local") {
+    const { runRerender } = await import("./rerender");
+    void runRerender(clipId, (s) => new Promise((r) => setTimeout(r, s * 1000)), 2).catch((e) =>
+      console.error(`rerender ${clipId} failed`, e),
+    );
+    return;
+  }
+  await tasks.trigger<typeof rerenderClip>("rerender-clip", { clipId }, { tags: [`clip_${clipId}`] });
 }

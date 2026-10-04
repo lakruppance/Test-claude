@@ -27,7 +27,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("auth.reset.title")}</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight">{t("auth.reset.title")}</h1>
       <form onSubmit={submit} className="grid gap-5">
         <Field label={t("auth.password")} type="password" name="password" autoComplete="new-password"
           minLength={10} help={t("auth.passwordHelp")} />

@@ -16,8 +16,8 @@ export default async function ChannelsPage() {
   return (
     <div className="grid max-w-4xl gap-10">
       <header className="grid gap-3">
-        <h1 className="text-3xl font-semibold tracking-tight">{t("channels.title")}</h1>
-        <p className="max-w-[65ch] text-zinc-600 dark:text-zinc-400">{t("channels.lead")}</p>
+        <h1 className="font-display text-3xl font-bold tracking-tight">{t("channels.title")}</h1>
+        <p className="max-w-[65ch] text-muted">{t("channels.lead")}</p>
         {plan.channel_monitoring ? (
           <p className="text-sm">{t("channels.limit", { count, max: plan.max_channels })}</p>
         ) : (

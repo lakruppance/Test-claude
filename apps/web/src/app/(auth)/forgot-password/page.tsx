@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("auth.forgot.title")}</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight">{t("auth.forgot.title")}</h1>
       {sent ? (
         <FormMessage info={t("auth.forgot.sent")} />
       ) : (

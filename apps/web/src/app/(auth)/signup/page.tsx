@@ -32,7 +32,7 @@ export default function SignupPage() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("auth.signup.title")}</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight">{t("auth.signup.title")}</h1>
       {done ? (
         <FormMessage info={t("auth.signup.checkEmail")} />
       ) : (

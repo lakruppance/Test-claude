@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { t } from "@/i18n/messages";
 import { subscribeToRows } from "@/lib/realtime";
+import { formatDateTime } from "@/lib/format";
 
 export type JobSummary = {
   id: string;
@@ -34,9 +35,9 @@ export function JobsList({ userId, initial }: { userId: string; initial: JobSumm
 
   if (jobs.length === 0) {
     return (
-      <div className="grid justify-items-start gap-4 rounded-xl border border-dashed border-zinc-300 p-8 dark:border-zinc-700">
-        <p className="text-zinc-600 dark:text-zinc-400">{t("dashboard.empty")}</p>
-        <Link href="/app/new" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">
+      <div className="grid justify-items-start gap-4 rounded-2xl border border-dashed border-line p-8">
+        <p className="text-muted">{t("dashboard.empty")}</p>
+        <Link href="/app/new" className="rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-on-gold">
           {t("nav.new")}
         </Link>
       </div>
@@ -44,21 +45,21 @@ export function JobsList({ userId, initial }: { userId: string; initial: JobSumm
   }
 
   return (
-    <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+    <ul className="divide-y divide-line">
       {jobs.map((job) => (
         <li key={job.id}>
           <Link href={`/app/jobs/${job.id}`} className="grid gap-2 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
             <div className="grid gap-1">
               <span className="font-medium">{job.source_filename}</span>
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                {new Date(job.created_at).toLocaleString("fr-FR")}
+              <span className="text-sm text-muted">
+                {formatDateTime(job.created_at)}
                 {job.status === "succeeded" && ` | ${t("dashboard.clips", { count: job.clip_count })}`}
                 {job.status === "failed" && ` | ${t(`error.${job.error_code ?? "default"}`)}`}
               </span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               {(job.status === "running" || job.status === "queued") && (
-                <progress max={100} value={job.progress} className="h-2 w-32 accent-emerald-600" />
+                <progress max={100} value={job.progress} className="h-2 w-32 accent-gold" />
               )}
               <span>{t(`job.status.${job.status}`)}</span>
             </div>
