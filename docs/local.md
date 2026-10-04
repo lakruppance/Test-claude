@@ -81,7 +81,7 @@ Puis relancez `scripts/local-up.sh`. Vos valeurs sont conservées d'un lancement
 |---|---|
 | « Docker is installed but not running » | Démarrez Docker Desktop |
 | Le worker ne démarre pas | `docker compose logs worker` |
-| Le traitement échoue à « Sélection des passages » avec un message de clé | Complétez `ANTHROPIC_API_KEY` dans `.env.local`, puis relancez |
+| Le traitement échoue à « Sélection des passages » (« service d’IA non configuré ») | Complétez `ANTHROPIC_API_KEY` dans `.env.local`, puis relancez |
 | Ports déjà utilisés (3000, 8333, 8787, 54321, 54324) | Fermez l'application qui les occupe |
 
 ## Paiement en local
