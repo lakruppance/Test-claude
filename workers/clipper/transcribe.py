@@ -49,6 +49,30 @@ class AssemblyAIProvider:
                           source="assemblyai")
 
 
+# Whisper splits elisions and hyphenated forms into pieces ("aujourd" + "'hui", "celle" +
+# "-ci"). A piece is glued to the previous word when it has no leading space (same word) or
+# starts with an apostrophe or hyphen.
+_GLUE_PREFIXES = ("'", "\u2019", "-")
+
+
+def merge_word_pieces(pieces: list[tuple[str, float, float, float]]) -> list[Word]:
+    """pieces: (raw token with its leading space, start, end, probability), in order."""
+    words: list[Word] = []
+    for raw, start, end, prob in pieces:
+        text = raw.strip()
+        if not text:
+            continue
+        continuation = words and (not raw[:1].isspace() or text.startswith(_GLUE_PREFIXES))
+        if continuation:
+            prev = words[-1]
+            words[-1] = Word(text=prev.text + text, start=prev.start, end=float(end),
+                             confidence=min(prev.confidence or 1.0, float(prob)))
+        else:
+            words.append(Word(text=text, start=float(start), end=float(end),
+                              confidence=float(prob)))
+    return words
+
+
 class WhisperProvider:
     """Local transcription with faster-whisper (no account, no API cost). Word timestamps come
     from Whisper's alignment; accuracy is below AssemblyAI on noisy audio. The model is
@@ -83,13 +107,11 @@ class WhisperProvider:
             language = max(allowed, key=lambda code: probs.get(code, 0.0))
             segments, info = model.transcribe(str(audio), word_timestamps=True, vad_filter=True,
                                               language=language)
-        words = [
-            Word(text=w.word.strip(), start=float(w.start), end=float(w.end),
-                 confidence=float(w.probability))
-            for seg in segments
-            for w in (seg.words or [])
-            if w.word.strip()
-        ]
+        words: list[Word] = []
+        for seg in segments:  # pieces never span two Whisper segments
+            words += merge_word_pieces(
+                [(w.word, w.start, w.end, w.probability) for w in (seg.words or [])]
+            )
         duration = float(info.duration)
         ledger.lines.append(
             CostLine("local", "transcription:whisper", duration / 3600, "hour", 0.0)

@@ -20,6 +20,8 @@ node scripts/local-env.mjs "$($SUPABASE status -o json 2>/dev/null)"
 
 echo "==> Starting storage and worker (first build takes a few minutes)..."
 docker compose up -d --build
+# Recreate the worker so edits to .env.local (API keys, providers) always apply.
+docker compose up -d --no-deps --force-recreate worker
 
 echo -n "==> Waiting for the worker"
 for _ in $(seq 1 60); do

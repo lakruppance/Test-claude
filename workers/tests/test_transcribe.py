@@ -51,3 +51,16 @@ def test_fake_providers_refused_outside_development(monkeypatch):
     monkeypatch.setenv("TRANSCRIPTION_PROVIDER", "fake")
     with pytest.raises(RuntimeError):
         get_provider(Settings())
+
+
+def test_whisper_pieces_are_glued_back_into_words():
+    from clipper.transcribe import merge_word_pieces
+
+    pieces = [(" Aujourd", 0.0, 0.3, 0.9), ("'hui", 0.3, 0.5, 0.8), (" t", 0.6, 0.7, 0.9),
+              ("'as", 0.7, 0.9, 0.95), (" celle", 1.0, 1.2, 0.9), (" -ci", 1.2, 1.4, 0.7),
+              (" d", 1.5, 1.6, 0.9), ("’une", 1.6, 1.8, 0.9), (" idée.", 1.9, 2.2, 0.9)]
+    words = merge_word_pieces(pieces)
+    assert [w.text for w in words] == ["Aujourd'hui", "t'as", "celle-ci", "d’une", "idée."]
+    assert (words[0].start, words[0].end, words[0].confidence) == (0.0, 0.5, 0.8)
+    # A segment's first piece always starts a word, even without a leading space.
+    assert [w.text for w in merge_word_pieces([("Bonjour", 0, 1, 1), (" à", 1, 2, 1)])] == ["Bonjour", "à"]
