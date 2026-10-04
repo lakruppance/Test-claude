@@ -1,6 +1,7 @@
 // Overall job progress (0-100) from the current step and its own completion ratio.
 export const STEP_RANGES = {
-  prepare: [0, 10],
+  fetch: [0, 6],
+  prepare: [6, 10],
   transcribe: [10, 40],
   detect: [40, 55],
   render: [55, 100],

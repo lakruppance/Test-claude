@@ -79,6 +79,10 @@ jobs:
           ASSEMBLYAI_SPEECH_MODELS: ${{ vars.ASSEMBLYAI_SPEECH_MODELS || 'universal' }}
           MAX_SOURCE_MINUTES: ${{ vars.MAX_SOURCE_MINUTES || '180' }}
           CLIPS_TO_RENDER: ${{ vars.CLIPS_TO_RENDER || '3' }}
+          YTDLP_ENABLED: ${{ vars.YTDLP_ENABLED || 'true' }}
+          MAX_UPLOAD_BYTES: ${{ vars.MAX_UPLOAD_BYTES || '5368709120' }}
+          # Optional, only with explicit approval (see docs/phase-3.md)
+          YTDLP_PROXY_URL: ${{ secrets.YTDLP_PROXY_URL }}
         run: |
           umask 077
           tmp="$(mktemp)"
@@ -92,7 +96,10 @@ jobs:
           missing = [k for k in keys if not os.environ.get(k)]
           if missing:
               sys.exit(f"Missing staging settings: {', '.join(missing)}")
-          json.dump({k: os.environ[k] for k in keys}, open(sys.argv[1], "w"))
+          optional = ["YTDLP_ENABLED", "MAX_UPLOAD_BYTES", "YTDLP_PROXY_URL"]
+          values = {k: os.environ[k] for k in keys}
+          values.update({k: os.environ[k] for k in optional if os.environ.get(k)})
+          json.dump(values, open(sys.argv[1], "w"))
           PY
           uv run modal secret create clipper-secrets --from-json "$tmp" --force
           rm -f "$tmp"

@@ -1,12 +1,9 @@
-import { tasks } from "@trigger.dev/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { env } from "@/lib/env";
-import { startLocalJob } from "@/lib/local-runner";
+import { enqueueJob } from "@/lib/jobs";
 import { completeMultipartUpload } from "@/lib/r2";
 import { currentUser } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import type { processVideo } from "@/trigger/process-video";
 
 const body = z.object({
   jobId: z.string().uuid(),
@@ -39,17 +36,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "upload_incomplete" }, { status: 409 });
   }
 
-  if (env().ORCHESTRATOR === "local") {
-    await db.from("jobs").update({ status: "queued" }).eq("id", jobId);
-    startLocalJob(jobId);
-    return NextResponse.json({ jobId, status: "queued" });
-  }
-
-  const handle = await tasks.trigger<typeof processVideo>(
-    "process-video",
-    { jobId },
-    { idempotencyKey: `process-video-${jobId}`, tags: [`job_${jobId}`, `user_${user.id}`] },
-  );
-  await db.from("jobs").update({ status: "queued", trigger_run_id: handle.id }).eq("id", jobId);
+  await enqueueJob(jobId, user.id);
   return NextResponse.json({ jobId, status: "queued" });
 }

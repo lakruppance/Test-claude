@@ -42,6 +42,7 @@ function fakeDeps(script: Script, existingSteps: StepRow[] = [], quotaOk = true)
 
 function defaultResult(step: StepName): CallStatus {
   const results: Record<StepName, Record<string, unknown>> = {
+    fetch: { bytes: 1234, title: "Ma vidéo YouTube" },
     prepare: { duration: 600, width: 1920, height: 1080 },
     transcribe: { language: "fr" },
     detect: { to_render: ["s1", "s2", "s3"] },
@@ -60,6 +61,14 @@ describe("processJob", () => {
     expect(job).toMatchObject({ status: "succeeded", progress: 100, language: "fr", duration_seconds: 600 });
     expect(quota.reserved).toEqual([10]); // 600 s = 10 min reserved after preparation
     expect(started.every((s) => s.payload.max_source_minutes === 20 && s.payload.owner_id === "u1")).toBe(true);
+  });
+
+  it("downloads linked sources before preparing them", async () => {
+    const { deps, job, started } = fakeDeps({});
+    job.source_kind = "youtube";
+    await processJob(deps, "j1");
+    expect(started.map((s) => s.step).slice(0, 2)).toEqual(["fetch", "prepare"]);
+    expect(job.source_filename).toBe("Ma vidéo YouTube");
   });
 
   it("stops and refunds when the monthly quota is exceeded", async () => {

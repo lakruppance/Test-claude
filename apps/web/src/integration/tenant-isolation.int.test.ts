@@ -37,6 +37,10 @@ async function makeTenant(name: string): Promise<Tenant> {
   await admin.from("cost_events").insert({ job_id: jobId, user_id: id, step: "render", provider: "modal", item: "r", quantity: 1, unit: "core_second", usd: 0.01 }).throwOnError();
   await admin.from("rights_declarations").insert({ user_id: id, job_id: jobId, content_kind: "upload", content_ref: "x.mp4", statement_version: "v", statement: "s" }).throwOnError();
   await admin.rpc("reserve_minutes", { p_user: id, p_job: jobId, p_minutes: 1 });
+  const channelSuffix = (name + "x".repeat(22)).slice(0, 22);
+  const { data: channel } = await admin.from("channels").insert({ user_id: id, youtube_channel_id: `UC${channelSuffix}`, title: name })
+    .select("id").single().throwOnError();
+  await admin.from("channel_videos").insert({ channel_id: channel!.id, user_id: id, youtube_video_id: `${name}xxxxxxxxxxx`.slice(0, 11), title: "v", published_at: new Date().toISOString() }).throwOnError();
   return { id, client, jobId, segmentId: seg!.id };
 }
 
@@ -52,7 +56,7 @@ afterAll(async () => {
   for (const t of [a, b]) if (t) await admin.auth.admin.deleteUser(t.id);
 });
 
-const TABLES = ["jobs", "job_steps", "transcripts", "segments", "clips", "rights_declarations", "usage_events", "profiles"] as const;
+const TABLES = ["jobs", "job_steps", "transcripts", "segments", "clips", "rights_declarations", "usage_events", "profiles", "channels", "channel_videos"] as const;
 
 describe("tenant isolation through the API (RLS)", () => {
   it.each(TABLES)("A reads only own rows in %s", async (table) => {

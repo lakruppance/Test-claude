@@ -1,27 +1,77 @@
-// Browser-side multipart upload straight to R2 with presigned part URLs.
-// Parts are sent 4 at a time and each part is retried up to 3 times.
+// Browser-side multipart upload straight to object storage with presigned part URLs.
+// Parts are sent 4 at a time and retried up to 3 times. Progress is saved in localStorage so an
+// upload interrupted by a closed tab or a network loss resumes where it stopped when the same
+// file is selected again.
 
-export type UploadStart = { jobId: string; partSize: number; urls: string[] };
+export type Part = { partNumber: number; etag: string };
+export type UploadPlan = {
+  jobId: string;
+  partSize: number;
+  partCount: number;
+  uploaded: Part[];
+  urls: Record<number, string>; // part number -> presigned URL, for parts still missing
+};
+
+const STORE = "clips.uploads.v1";
+
+export function fileFingerprint(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+function readStore(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(STORE) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+export function rememberUpload(file: File, jobId: string) {
+  try {
+    localStorage.setItem(STORE, JSON.stringify({ ...readStore(), [fileFingerprint(file)]: jobId }));
+  } catch {
+    // storage unavailable: the upload still works, it just cannot resume after a reload
+  }
+}
+
+export function forgetUpload(file: File) {
+  try {
+    const store = readStore();
+    delete store[fileFingerprint(file)];
+    localStorage.setItem(STORE, JSON.stringify(store));
+  } catch {
+    // ignore
+  }
+}
+
+export function pendingUploadFor(file: File): string | null {
+  return readStore()[fileFingerprint(file)] ?? null;
+}
 
 export async function uploadParts(
   file: File,
-  start: UploadStart,
+  plan: UploadPlan,
   onProgress: (ratio: number) => void,
   concurrency = 4,
-): Promise<{ partNumber: number; etag: string }[]> {
-  const loaded = new Array<number>(start.urls.length).fill(0);
-  const parts: { partNumber: number; etag: string }[] = [];
-  let next = 0;
+): Promise<Part[]> {
+  const parts: Part[] = [...plan.uploaded];
+  const missing = Object.keys(plan.urls).map(Number).sort((a, b) => a - b);
+  const sizeOf = (n: number) => Math.min(file.size, n * plan.partSize) - (n - 1) * plan.partSize;
+  const alreadyDone = plan.uploaded.reduce((sum, p) => sum + sizeOf(p.partNumber), 0);
+  const loaded: Record<number, number> = {};
+  const report = () =>
+    onProgress((alreadyDone + Object.values(loaded).reduce((a, b) => a + b, 0)) / file.size);
+  report();
 
-  const sendPart = async (index: number) => {
-    const blob = file.slice(index * start.partSize, Math.min(file.size, (index + 1) * start.partSize));
+  const sendPart = async (n: number) => {
+    const blob = file.slice((n - 1) * plan.partSize, Math.min(file.size, n * plan.partSize));
     for (let attempt = 1; ; attempt++) {
       try {
-        const etag = await put(start.urls[index], blob, (n) => {
-          loaded[index] = n;
-          onProgress(loaded.reduce((a, b) => a + b, 0) / file.size);
+        const etag = await put(plan.urls[n], blob, (bytes) => {
+          loaded[n] = bytes;
+          report();
         });
-        parts.push({ partNumber: index + 1, etag });
+        parts.push({ partNumber: n, etag });
         return;
       } catch (error) {
         if (attempt >= 3) throw error;
@@ -30,10 +80,11 @@ export async function uploadParts(
     }
   };
 
+  let next = 0;
   const worker = async () => {
-    while (next < start.urls.length) await sendPart(next++);
+    while (next < missing.length) await sendPart(missing[next++]);
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, start.urls.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(concurrency, missing.length) }, worker));
   return parts.sort((a, b) => a.partNumber - b.partNumber);
 }
 

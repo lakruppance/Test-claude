@@ -244,3 +244,40 @@ def render(job: JobRef, segment_id: str, style: str, settings: Settings, r2, db,
     cost = _record_costs(db, job, "render", ledger, attempt)
     return {"segment_id": segment_id, "storage_key": clip_key, "reframe_mode": plan.mode,
             "detection_rate": round(plan.detection_rate, 3), "cost_usd": cost}
+
+
+def fetch(job: JobRef, settings: Settings, r2, db, resources: Resources, attempt: int = 1,
+          max_bytes: int | None = None, ydl_factory=None) -> dict[str, Any]:
+    """Download a linked source (Drive, Dropbox, YouTube) into object storage."""
+    from .ingest import (
+        detect_kind,
+        download_http,
+        download_youtube,
+        drive_download_url,
+        dropbox_download_url,
+    )
+
+    started = time.monotonic()
+    ledger = CostLedger(settings.prices)
+    job_row = db.select_one("jobs", id=job.job_id)
+    if job_row is None:
+        raise PipelineError("job_not_found", f"Job {job.job_id} not found")
+    url = job_row.get("source_url") or ""
+    kind = detect_kind(url)
+    max_bytes = max_bytes or int(os.environ.get("MAX_UPLOAD_BYTES", 5 * 1024**3))
+    title = None
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = Path(tmp)
+        if kind == "youtube":
+            path, meta = download_youtube(url, tmpdir, settings.max_source_minutes, max_bytes,
+                                          ydl_factory=ydl_factory)
+            title = meta["title"]
+        else:
+            path = tmpdir / "source"
+            download_url = drive_download_url(url) if kind == "drive" else dropbox_download_url(url)
+            _, title = download_http(download_url, path, max_bytes)
+        size = r2.upload(path, job_row["source_key"], "video/mp4")
+    ledger.storage("source", size, 7)
+    ledger.compute("fetch", time.monotonic() - started, resources.cores, resources.memory_gib)
+    cost = _record_costs(db, job, "fetch", ledger, attempt)
+    return {"bytes": size, "title": title, "kind": kind, "cost_usd": cost}

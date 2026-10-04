@@ -7,6 +7,7 @@ from typing import Any
 
 # Resources per step, also used for cost accounting.
 RESOURCES: dict[str, tuple[float, float]] = {
+    "fetch": (1.0, 2.0),
     "prepare": (2.0, 4.0),
     "transcribe": (0.25, 0.5),
     "detect": (0.25, 0.5),
@@ -58,6 +59,8 @@ def execute(step: str, payload: dict[str, Any]) -> dict[str, Any]:
     res = pipeline.Resources(*RESOURCES[step])
     attempt = payload.get("attempt", 1)
     job = _job(payload)
+    if step == "fetch":
+        return pipeline.fetch(job, settings, R2(), Database(), res, attempt)
     if step == "prepare":
         return pipeline.prepare(job, settings, R2(), Database(), res, attempt)
     if step == "transcribe":

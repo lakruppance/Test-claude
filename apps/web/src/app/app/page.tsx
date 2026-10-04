@@ -1,3 +1,4 @@
+import { DetectedVideos, type DetectedVideo } from "@/components/channels-manager";
 import { JobsList, type JobSummary } from "@/components/jobs-list";
 import { QuotaMeter } from "@/components/quota-meter";
 import { t } from "@/i18n/messages";
@@ -16,6 +17,12 @@ export default async function Dashboard() {
     ...job,
     clip_count: (clips as unknown as { count: number }[])[0]?.count ?? 0,
   }));
+  const { data: detected } = await db
+    .from("channel_videos")
+    .select("id, title, youtube_video_id, published_at")
+    .eq("status", "new")
+    .order("published_at", { ascending: false })
+    .limit(10);
   const toReview = initial.filter((j) => j.status === "succeeded").reduce((n, j) => n + j.clip_count, 0);
 
   return (
@@ -25,6 +32,12 @@ export default async function Dashboard() {
         <QuotaMeter account={account} />
         {toReview > 0 && <p className="text-sm">{t("dashboard.clipsReady", { count: toReview })}</p>}
       </section>
+      {(detected ?? []).length > 0 && (
+        <section className="grid gap-4">
+          <h2 className="text-xl font-semibold">{t("channels.newVideos")}</h2>
+          <DetectedVideos videos={detected as DetectedVideo[]} />
+        </section>
+      )}
       <section className="grid gap-4">
         <h2 className="text-xl font-semibold">{t("dashboard.videos")}</h2>
         <JobsList userId={user.id} initial={initial} />

@@ -8,6 +8,8 @@ const RUNTIME_VARS = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "WORKER_ENDPOINT_URL",
   "WORKER_SHARED_SECRET",
+  "RSS_POLL_INTERVAL_MINUTES",
+  "CLIP_STYLE_DEFAULT",
 ] as const;
 
 export default defineConfig({
@@ -24,7 +26,7 @@ export default defineConfig({
         RUNTIME_VARS.filter((name) => process.env[name]).map((name) => ({
           name,
           value: process.env[name] as string,
-          isSecret: name !== "NEXT_PUBLIC_SUPABASE_URL" && name !== "WORKER_ENDPOINT_URL",
+          isSecret: ["SUPABASE_SERVICE_ROLE_KEY", "WORKER_SHARED_SECRET"].includes(name),
         })),
       ),
     ],

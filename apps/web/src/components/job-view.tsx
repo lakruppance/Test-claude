@@ -46,6 +46,8 @@ type JobPayload = {
 };
 
 const STEPS = ["prepare", "transcribe", "detect", "render"];
+// Link imports that failed for reasons only a direct upload can work around.
+const UPLOAD_INSTEAD = new Set(["youtube_blocked", "video_age_restricted", "file_not_shared", "youtube_disabled"]);
 const TERMINAL = new Set(["succeeded", "failed", "canceled"]);
 const usd = (n: number) => `${n.toFixed(4)} $`;
 const time = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -103,9 +105,14 @@ export function JobView({ id }: { id: string }) {
           ))}
         </ol>
         {job.status === "failed" && (
-          <p role="alert" className="text-red-700 dark:text-red-400">
-            {t(`error.${job.error_code ?? "default"}`)}
-          </p>
+          <div role="alert" className="grid gap-2">
+            <p className="text-red-700 dark:text-red-400">{t(`error.${job.error_code ?? "default"}`)}</p>
+            {job.error_code && UPLOAD_INSTEAD.has(job.error_code) && (
+              <a href="/app/new" className="justify-self-start text-sm font-medium underline underline-offset-4">
+                {t("error.uploadInstead")}
+              </a>
+            )}
+          </div>
         )}
       </section>
 

@@ -17,6 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-2">
             <Link href="/app" className={link}>{t("nav.dashboard")}</Link>
             <Link href="/app/new" className={link}>{t("nav.new")}</Link>
+            <Link href="/app/channels" className={link}>{t("nav.channels")}</Link>
             {account.isAdmin && <Link href="/admin" className={link}>{t("nav.admin")}</Link>}
           </div>
           <div className="flex items-center gap-4">

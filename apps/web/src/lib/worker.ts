@@ -1,6 +1,6 @@
 // HTTP client for the Modal worker API (start a step, poll its result).
 
-export type StepName = "prepare" | "transcribe" | "detect" | "render";
+export type StepName = "fetch" | "prepare" | "transcribe" | "detect" | "render";
 
 export type StepPayload = {
   job_id: string;

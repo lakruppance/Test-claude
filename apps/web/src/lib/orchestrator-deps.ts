@@ -10,7 +10,7 @@ export function supabaseDeps(sleep: (seconds: number) => Promise<void>): Orchest
     async getJob(jobId) {
       const { data, error } = await db
         .from("jobs")
-        .select("id, user_id, status, options")
+        .select("id, user_id, status, source_kind, options")
         .eq("id", jobId)
         .single();
       if (error) throw new Error(`Job ${jobId} not found: ${error.message}`);

@@ -8,6 +8,7 @@ export type Plan = {
   watermark: boolean;
   direct_publish: boolean;
   channel_monitoring: boolean;
+  max_channels: number;
 };
 
 export type Account = {

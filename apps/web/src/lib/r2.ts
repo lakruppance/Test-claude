@@ -3,6 +3,7 @@ import {
   CompleteMultipartUploadCommand,
   CreateMultipartUploadCommand,
   GetObjectCommand,
+  ListPartsCommand,
   S3Client,
   UploadPartCommand,
 } from "@aws-sdk/client-s3";
@@ -45,6 +46,34 @@ export async function startMultipartUpload(key: string, contentType: string, par
     ),
   );
   return { uploadId: UploadId, urls };
+}
+
+// Parts already received for an unfinished multipart upload, plus fresh URLs for the others.
+export async function resumeMultipartUpload(key: string, uploadId: string, partCount: number) {
+  const e = env();
+  const uploaded: { partNumber: number; etag: string }[] = [];
+  let marker: string | undefined;
+  do {
+    const page = await s3().send(
+      new ListPartsCommand({ Bucket: e.R2_BUCKET, Key: key, UploadId: uploadId, PartNumberMarker: marker }),
+    );
+    for (const p of page.Parts ?? []) {
+      if (p.PartNumber && p.ETag) uploaded.push({ partNumber: p.PartNumber, etag: p.ETag });
+    }
+    marker = page.IsTruncated ? page.NextPartNumberMarker : undefined;
+  } while (marker);
+  const done = new Set(uploaded.map((p) => p.partNumber));
+  const urls: Record<number, string> = {};
+  for (let n = 1; n <= partCount; n++) {
+    if (!done.has(n)) {
+      urls[n] = await getSignedUrl(
+        s3(),
+        new UploadPartCommand({ Bucket: e.R2_BUCKET, Key: key, UploadId: uploadId, PartNumber: n }),
+        { expiresIn: 6 * 3600 },
+      );
+    }
+  }
+  return { uploaded, urls };
 }
 
 export async function completeMultipartUpload(

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getAccount, jobCreationBlocked } from "@/lib/account";
 import { env } from "@/lib/env";
 import { startMultipartUpload } from "@/lib/r2";
-import { RIGHTS_STATEMENT, RIGHTS_STATEMENT_VERSION } from "@/lib/rights";
+import { recordRights, requestContext } from "@/lib/jobs";
 import { ACCEPTED_TYPES, planParts, sourceKey } from "@/lib/storage-keys";
 import { currentUser } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -56,21 +56,18 @@ export async function POST(request: Request) {
   });
   if (error) return NextResponse.json({ error: "database_error" }, { status: 500 });
 
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const { error: rightsError } = await db.from("rights_declarations").insert({
-    user_id: user.id,
-    job_id: jobId,
-    content_kind: "upload",
-    content_ref: filename,
-    statement_version: RIGHTS_STATEMENT_VERSION,
-    statement: RIGHTS_STATEMENT,
-    ip_address: forwarded && /^[0-9a-fA-F.:]+$/.test(forwarded) ? forwarded : null,
-    user_agent: request.headers.get("user-agent")?.slice(0, 500) ?? null,
-  });
-  if (rightsError) {
+  try {
+    await recordRights(user.id, jobId, { contentKind: "upload", contentRef: filename, ...requestContext(request) });
+  } catch {
     await db.from("jobs").delete().eq("id", jobId);
     return NextResponse.json({ error: "database_error" }, { status: 500 });
   }
 
-  return NextResponse.json({ jobId, partSize, urls });
+  return NextResponse.json({
+    jobId,
+    partSize,
+    partCount: count,
+    uploaded: [],
+    urls: Object.fromEntries(urls.map((url, i) => [i + 1, url])),
+  });
 }

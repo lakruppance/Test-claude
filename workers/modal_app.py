@@ -31,6 +31,7 @@ image = (
         "opencv-python-headless>=4.10",
         "pydantic>=2.7",
         "fastapi[standard]>=0.115",
+        "yt-dlp>=2026.8.19",
     )
     .run_commands(
         "mkdir -p /assets/fonts /assets/models",
@@ -48,6 +49,13 @@ app = modal.App("clipper", image=image)
 secrets = [modal.Secret.from_name("clipper-secrets")]
 
 # Each function reserves the resources declared in clipper/steps.py (used for cost accounting).
+
+
+@app.function(secrets=secrets, cpu=1.0, memory=2048, timeout=3600, ephemeral_disk=100 * 1024)
+def fetch_step(payload: dict[str, Any]) -> dict[str, Any]:
+    from clipper.steps import run_step
+
+    return run_step("fetch", payload)
 
 
 @app.function(secrets=secrets, cpu=2.0, memory=4096, timeout=3600, ephemeral_disk=100 * 1024)
@@ -79,6 +87,7 @@ def render_step(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 STEPS = {
+    "fetch": fetch_step,
     "prepare": prepare_step,
     "transcribe": transcribe_step,
     "detect": detect_step,

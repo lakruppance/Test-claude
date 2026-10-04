@@ -48,7 +48,8 @@ describe("summarizeCosts", () => {
 
 describe("overallProgress", () => {
   it("maps step ratios into global ranges", () => {
-    expect(overallProgress("prepare", 0)).toBe(0);
+    expect(overallProgress("fetch", 0)).toBe(0);
+    expect(overallProgress("prepare", 0)).toBe(6);
     expect(overallProgress("render", 0.5)).toBe(77.5);
     expect(overallProgress("render", 2)).toBe(100);
   });

@@ -10,6 +10,7 @@ export type JobRow = {
   id: string;
   user_id: string;
   status: string;
+  source_kind?: string;
   options: { style?: string; with_hook?: boolean } | null;
 };
 
@@ -165,6 +166,14 @@ async function runJob(deps: OrchestratorDeps, jobId: string) {
     return out[step];
   };
 
+  if (job.source_kind && job.source_kind !== "upload") {
+    // Drive, Dropbox or YouTube link: download it into storage first.
+    const fetched = await simpleStep("fetch");
+    await deps.updateJob(jobId, {
+      source_bytes: fetched.bytes,
+      ...(fetched.title ? { source_filename: String(fetched.title).slice(0, 255) } : {}),
+    });
+  }
   const prepared = await simpleStep("prepare");
   const reservation = await deps.reserveMinutes(job.user_id, jobId, minutesOf(Number(prepared.duration)));
   if (!reservation.ok) {

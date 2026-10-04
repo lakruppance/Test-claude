@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">
+ <link rel="self" href="http://www.youtube.com/feeds/videos.xml?channel_id=UCaaaaaaaaaaaaaaaaaaaaaa"/>
+ <id>yt:channel:aaaaaaaaaaaaaaaaaaaaaa</id>
+ <yt:channelId>aaaaaaaaaaaaaaaaaaaaaa</yt:channelId>
+ <title>Ma Chaîne Test</title>
+ <entry>
+  <id>yt:video:AAAAAAAAAA1</id>
+  <yt:videoId>AAAAAAAAAA1</yt:videoId>
+  <title>Épisode 2 : comment gagner du temps</title>
+  <published>2026-10-02T09:00:00+00:00</published>
+ </entry>
+ <entry>
+  <id>yt:video:AAAAAAAAAA0</id>
+  <yt:videoId>AAAAAAAAAA0</yt:videoId>
+  <title>Épisode 1</title>
+  <published>2026-09-25T09:00:00+00:00</published>
+ </entry>
+</feed>
