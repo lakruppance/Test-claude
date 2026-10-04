@@ -2,8 +2,8 @@ import {
   ArrowRight,
   Broadcast,
   CloudArrowUp,
-  Scissors,
   Subtitles,
+  TiktokLogo,
   UserFocus,
   YoutubeLogo,
 } from "@phosphor-icons/react/dist/ssr";
@@ -176,13 +176,16 @@ export default async function Landing() {
             </Reveal>
             <Reveal className="grid content-between gap-6 rounded-2xl border border-line bg-surface p-6">
               <Broadcast size={28} aria-hidden="true" />
-              <h3 className="font-display text-lg font-bold">Veille de chaîne</h3>
+              <div className="grid gap-1">
+                <h3 className="font-display text-lg font-bold">Veille de chaîne</h3>
+                <p className="text-sm text-muted">Chaque nouvelle vidéo de votre chaîne est repérée.</p>
+              </div>
             </Reveal>
           </div>
           <Reveal className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[#121314] p-6 text-white">
             <div className="flex items-center gap-3">
               <YoutubeLogo size={28} aria-hidden="true" />
-              <Scissors size={28} aria-hidden="true" />
+              <TiktokLogo size={28} aria-hidden="true" />
               <p className="font-display text-lg font-bold">Publication YouTube Shorts et TikTok, titres et hashtags inclus.</p>
             </div>
           </Reveal>

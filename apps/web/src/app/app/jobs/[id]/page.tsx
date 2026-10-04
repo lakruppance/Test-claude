@@ -6,7 +6,9 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
   const { id } = await params;
   return (
     <div className="grid gap-8">
-      <Link href="/app" className="text-sm text-muted underline underline-offset-4">{t("nav.dashboard")}</Link>
+      <nav aria-label={t("common.breadcrumb")} className="text-sm text-muted">
+        <Link href="/app" className="underline underline-offset-4">{t("nav.dashboard")}</Link>
+      </nav>
       <JobView id={id} />
     </div>
   );

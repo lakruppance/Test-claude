@@ -1,7 +1,9 @@
 "use client";
 
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
+import { buttonClass, inputClass } from "@/components/ui";
 import { t } from "@/i18n/messages";
 import { formatDateTime } from "@/lib/format";
 
@@ -14,8 +16,7 @@ export type ChannelItem = {
   last_error: string | null;
 };
 
-const field = "rounded-[10px] border border-line bg-surface p-2.5 text-sm";
-const ghost = "rounded-full border border-line bg-surface px-4 py-1.5 text-sm font-medium disabled:opacity-50";
+const ghost = buttonClass("secondary", "sm");
 
 async function call(url: string, init: RequestInit) {
   const res = await fetch(url, { ...init, headers: { "content-type": "application/json" } });
@@ -75,12 +76,16 @@ export function ChannelsManager(props: {
         <ul className="divide-y divide-line">
           {props.channels.map((c) => (
             <li key={c.id} className="grid gap-3 py-4 md:grid-cols-[1fr_auto] md:items-center">
-              <div className="grid gap-1">
+              <div className="grid min-w-0 gap-1">
                 <a href={`https://www.youtube.com/channel/${c.youtube_channel_id}`} target="_blank" rel="noreferrer"
-                  className="font-medium underline-offset-4 hover:underline">{c.title}</a>
+                  className="inline-flex min-w-0 items-center gap-1.5 justify-self-start font-medium underline-offset-4 hover:underline">
+                  <span className="truncate">{c.title}</span>
+                  <ArrowSquareOut size={14} aria-hidden="true" className="shrink-0 text-muted" />
+                  <span className="sr-only">{t("common.newTab")}</span>
+                </a>
                 <span className="text-sm text-muted">
                   {t("channels.lastChecked", { date: c.last_checked_at ? formatDateTime(c.last_checked_at) : t("channels.never") })}
-                  {c.last_error && ` | ${t(`channels.error.${c.last_error}`)}`}
+                  {c.last_error && ` · ${t(`channels.error.${c.last_error}`)}`}
                 </span>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" className="size-4 accent-gold" checked={c.auto_process}
@@ -92,7 +97,7 @@ export function ChannelsManager(props: {
               <div className="flex gap-2">
                 <button type="button" className={ghost} disabled={busy !== null}
                   onClick={() => run(`check-${c.id}`, () => call(`/api/channels/${c.id}/check`, { method: "POST" }))}>
-                  {t("channels.checkNow")}
+                  {busy === `check-${c.id}` ? `${t("channels.checkNow")}…` : t("channels.checkNow")}
                 </button>
                 <button type="button" className={ghost} disabled={busy !== null}
                   onClick={() => {
@@ -109,10 +114,11 @@ export function ChannelsManager(props: {
 
       {props.canAdd && (
         <form onSubmit={add} className="grid max-w-xl gap-4">
-          <h2 className="text-lg font-semibold">{t("channels.add")}</h2>
+          <h2 className="font-display text-xl font-bold">{t("channels.add")}</h2>
           <div className="grid gap-2">
             <label htmlFor={ids.input} className="text-sm font-medium">{t("channels.input")}</label>
-            <input id={ids.input} name="channel" required className={field} aria-describedby={ids.help} placeholder="https://www.youtube.com/@" />
+            <input id={ids.input} name="channel" required className={inputClass} aria-describedby={ids.help}
+              placeholder="https://www.youtube.com/@votrechaine…" inputMode="url" autoComplete="off" spellCheck={false} autoCapitalize="none" />
             <p id={ids.help} className="text-sm text-muted">{t("channels.inputHelp")}</p>
           </div>
           <label htmlFor={ids.auto} className="flex items-center gap-3 text-sm">
@@ -124,8 +130,8 @@ export function ChannelsManager(props: {
             {t("channels.rights")}
           </label>
           <button type="submit" disabled={busy !== null}
-            className="justify-self-start rounded-lg bg-gold px-5 py-2.5 text-sm font-semibold text-on-gold disabled:opacity-50">
-            {t("channels.add")}
+            className={`${buttonClass("primary")} justify-self-start`}>
+            {busy === "add" ? `${t("channels.add")}…` : t("channels.add")}
           </button>
         </form>
       )}
@@ -160,13 +166,17 @@ export function DetectedVideos({ videos }: { videos: DetectedVideo[] }) {
       <ul className="divide-y divide-line">
         {videos.map((v) => (
           <li key={v.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-            <div className="grid gap-0.5">
-              <a href={`https://www.youtube.com/watch?v=${v.youtube_video_id}`} target="_blank" rel="noreferrer" className="font-medium hover:underline">{v.title}</a>
+            <div className="grid min-w-0 gap-0.5">
+              <a href={`https://www.youtube.com/watch?v=${v.youtube_video_id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-medium hover:underline">
+                {v.title}
+                <ArrowSquareOut size={14} aria-hidden="true" className="shrink-0 text-muted" />
+                <span className="sr-only">{t("common.newTab")}</span>
+              </a>
               <span className="text-sm text-muted">{formatDateTime(v.published_at)}</span>
             </div>
             <button type="button" disabled={busy !== null} onClick={() => processVideo(v.id)}
-              className="rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-on-gold disabled:opacity-50">
-              {t("channels.process")}
+              className={buttonClass("primary", "sm")}>
+              {busy === v.id ? `${t("channels.process")}…` : t("channels.process")}
             </button>
           </li>
         ))}

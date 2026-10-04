@@ -86,12 +86,9 @@ export function LibraryGrid({ clips }: { clips: LibraryClip[] }) {
               </label>
             </div>
             <Link href={`/app/clips/${clip.id}`} className="line-clamp-2 text-sm font-medium hover:underline">{clip.title}</Link>
-            <p className="flex flex-wrap gap-x-2 text-xs text-muted">
-              <span>{t(`clip.status.${clip.status}`)}</span>
-              <span aria-hidden="true">·</span>
-              <span>{styleName(t(`upload.style.${clip.style}`))}</span>
-              <span aria-hidden="true">·</span>
-              <span className="whitespace-nowrap">{formatSeconds(Math.round(clip.duration))}</span>
+            <p className="text-xs font-medium">{t(`clip.status.${clip.status}`)}</p>
+            <p className="text-xs text-muted">
+              {styleName(t(`upload.style.${clip.style}`))} · <span className="whitespace-nowrap">{formatSeconds(Math.round(clip.duration))}</span>
             </p>
             <p className="truncate text-xs text-muted" title={clip.source}>{clip.source}</p>
           </li>

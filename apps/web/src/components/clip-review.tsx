@@ -3,7 +3,8 @@
 import { Check, Copy, DownloadSimple, ArrowCounterClockwise, X } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useState } from "react";
-import { buttonClass, scoreTone, styleName } from "@/components/ui";
+import { StylePicker } from "@/components/style-picker";
+import { buttonClass, scoreTone } from "@/components/ui";
 import { t } from "@/i18n/messages";
 import { formatSeconds } from "@/lib/format";
 import { subscribeToRows } from "@/lib/realtime";
@@ -41,14 +42,7 @@ export type ReviewData = {
   words: { text: string; start: number; end: number }[];
 };
 
-const STYLES = ["impact", "boite", "epure"] as const;
 const clock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
-
-function StylePreview({ style }: { style: string }) {
-  if (style === "impact") return <span className="whitespace-nowrap font-display text-xs font-extrabold uppercase text-white sm:text-sm [text-shadow:0_0_3px_#000]">Le <span className="text-gold">mot</span> fort</span>;
-  if (style === "boite") return <span className="whitespace-nowrap rounded bg-black/60 px-1.5 text-xs font-semibold text-white sm:text-base">Le <span className="text-[#3ddc84]">mot</span> clé</span>;
-  return <span className="whitespace-nowrap text-xs font-semibold text-white/60 sm:text-sm">Le <span className="text-white">mot</span> discret</span>;
-}
 
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -206,18 +200,8 @@ export function ClipReview({ data }: { data: ReviewData }) {
         </section>
 
         <section className="grid gap-4 border-t border-line pt-6">
-          <fieldset className="grid gap-3">
-            <legend className="mb-2 font-display text-xl font-bold">{t("review.style")}</legend>
-            <div className="grid grid-cols-3 gap-3">
-              {STYLES.map((s) => (
-                <label key={s} className={`grid cursor-pointer gap-2 rounded-2xl border p-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${style === s ? "border-gold shadow-[0_0_0_1px_var(--gold)]" : "border-line"}`}>
-                  <input type="radio" name="style" value={s} checked={style === s} onChange={() => setStyle(s)} className="sr-only" disabled={rendering} />
-                  <span className="grid h-16 place-items-center overflow-hidden rounded-xl bg-[#2a2c2f]"><StylePreview style={s} /></span>
-                  <span className="text-sm font-medium">{styleName(t(`upload.style.${s}`))}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <StylePicker legend={t("review.style")} name="style" value={style} onChange={setStyle} disabled={rendering}
+            legendClassName="mb-2 font-display text-xl font-bold" />
           <label htmlFor={ids.hook} className="flex items-center gap-3 text-sm">
             <input id={ids.hook} type="checkbox" checked={withHook} onChange={(e) => setWithHook(e.target.checked)} className="size-4 accent-gold" disabled={rendering} />
             <span>

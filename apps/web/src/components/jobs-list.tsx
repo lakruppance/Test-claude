@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { buttonClass } from "@/components/ui";
 import { t } from "@/i18n/messages";
 import { subscribeToRows } from "@/lib/realtime";
 import { formatDateTime } from "@/lib/format";
@@ -37,7 +38,7 @@ export function JobsList({ userId, initial }: { userId: string; initial: JobSumm
     return (
       <div className="grid justify-items-start gap-4 rounded-2xl border border-dashed border-line p-8">
         <p className="text-muted">{t("dashboard.empty")}</p>
-        <Link href="/app/new" className="rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-on-gold">
+        <Link href="/app/new" className={buttonClass("primary")}>
           {t("nav.new")}
         </Link>
       </div>
@@ -48,18 +49,18 @@ export function JobsList({ userId, initial }: { userId: string; initial: JobSumm
     <ul className="divide-y divide-line">
       {jobs.map((job) => (
         <li key={job.id}>
-          <Link href={`/app/jobs/${job.id}`} className="grid gap-2 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
-            <div className="grid gap-1">
-              <span className="font-medium">{job.source_filename}</span>
+          <Link href={`/app/jobs/${job.id}`} className="-mx-3 grid gap-2 rounded-xl px-3 py-4 transition-colors hover:bg-line/30 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+            <div className="grid min-w-0 gap-1">
+              <span className="truncate font-medium" title={job.source_filename ?? undefined}>{job.source_filename ?? t("job.untitled")}</span>
               <span className="text-sm text-muted">
                 {formatDateTime(job.created_at)}
-                {job.status === "succeeded" && ` | ${t("dashboard.clips", { count: job.clip_count })}`}
-                {job.status === "failed" && ` | ${t(`error.${job.error_code ?? "default"}`)}`}
+                {job.status === "succeeded" && ` · ${t("dashboard.clips", { count: job.clip_count })}`}
+                {job.status === "failed" && ` · ${t(`error.${job.error_code ?? "default"}`)}`}
               </span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               {(job.status === "running" || job.status === "queued") && (
-                <progress max={100} value={job.progress} className="h-2 w-32 accent-gold" />
+                <progress max={100} value={job.progress} className="h-2 w-32 accent-gold" aria-label={t("job.progress")} />
               )}
               <span>{t(`job.status.${job.status}`)}</span>
             </div>

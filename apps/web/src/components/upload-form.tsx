@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
-import { buttonClass } from "@/components/ui";
+import { FileVideo, UploadSimple } from "@phosphor-icons/react";
+import { useId, useRef, useState } from "react";
+import { StylePicker, type SubtitleStyle } from "@/components/style-picker";
+import { buttonClass, cx, inputClass } from "@/components/ui";
 import { t } from "@/i18n/messages";
 import {
   forgetUpload,
@@ -12,27 +14,31 @@ import {
   type UploadPlan,
 } from "@/lib/upload-client";
 
-const STYLES = ["impact", "boite", "epure"] as const;
+const ACCEPT = "video/mp4,video/quicktime,video/webm,video/x-matroska";
 type Mode = "file" | "link";
 
-const field = "rounded-[10px] border border-line bg-surface p-2.5 text-sm text-ink";
+const formatSize = (bytes: number) =>
+  new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(bytes / 1024 ** (bytes >= 1024 ** 3 ? 3 : 2)) +
+  (bytes >= 1024 ** 3 ? "\u00a0Go" : "\u00a0Mo");
 
 async function errorCode(res: Response) {
   return ((await res.json().catch(() => ({}))) as { error?: string }).error;
 }
 
-export function UploadForm(props: { initialMode?: Mode; defaultStyle?: (typeof STYLES)[number]; defaultWithHook?: boolean }) {
+export function UploadForm(props: { initialMode?: Mode; defaultStyle?: SubtitleStyle; defaultWithHook?: boolean }) {
   const router = useRouter();
-  const ids = { file: useId(), help: useId(), link: useId(), linkHelp: useId(), style: useId(), hook: useId(), rights: useId() };
+  const ids = { file: useId(), help: useId(), link: useId(), linkHelp: useId(), hook: useId(), rights: useId() };
   const [mode, setMode] = useState<Mode>(props.initialMode ?? "file");
   const [file, setFile] = useState<File | null>(null);
   const [link, setLink] = useState("");
-  const [style, setStyle] = useState<(typeof STYLES)[number]>(props.defaultStyle ?? "impact");
+  const [style, setStyle] = useState<SubtitleStyle>(props.defaultStyle ?? "impact");
   const [withHook, setWithHook] = useState(props.defaultWithHook ?? true);
   const [rights, setRights] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [resuming, setResuming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const fail = (code?: string) => {
     setProgress(null);
@@ -113,11 +119,17 @@ export function UploadForm(props: { initialMode?: Mode; defaultStyle?: (typeof S
   const busy = progress !== null;
   const ready = rights && (mode === "file" ? Boolean(file) : link.trim().length > 8);
   const tab = (m: Mode) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium ${mode === m ? "bg-surface shadow-sm" : "text-muted"}`;
+    cx("rounded-full px-4 py-1.5 text-sm font-medium transition-colors", mode === m ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink");
+
+  function pick(f: File | undefined) {
+    if (!f) return;
+    setFile(f);
+    setError(null);
+  }
 
   return (
     <form onSubmit={submit} className="grid gap-6">
-      <div role="tablist" aria-label={t("upload.heading")} className="inline-flex justify-self-start rounded-lg bg-line/60 p-1">
+      <div role="tablist" aria-label={t("upload.heading")} className="inline-flex justify-self-start rounded-full bg-line/60 p-1">
         <button type="button" role="tab" aria-selected={mode === "file"} className={tab("file")} onClick={() => setMode("file")} disabled={busy}>
           {t("new.tab.file")}
         </button>
@@ -128,10 +140,33 @@ export function UploadForm(props: { initialMode?: Mode; defaultStyle?: (typeof S
 
       {mode === "file" ? (
         <div className="grid gap-2">
-          <label htmlFor={ids.file} className="text-sm font-medium">{t("upload.file")}</label>
-          <input id={ids.file} type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
-            aria-describedby={ids.help} required disabled={busy} className={`block w-full ${field}`}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <span className="text-sm font-medium" id={`${ids.file}-label`}>{t("upload.file")}</span>
+          <label htmlFor={ids.file}
+            onDragOver={(e) => { e.preventDefault(); if (!busy) setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); if (!busy) pick(e.dataTransfer.files?.[0]); }}
+            className={cx(
+              "grid cursor-pointer justify-items-center gap-3 rounded-2xl border-2 border-dashed p-8 text-center transition-colors",
+              "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)]",
+              dragging ? "border-gold bg-gold-soft/50" : file ? "border-control bg-surface" : "border-control hover:border-ink",
+              busy && "cursor-not-allowed opacity-70",
+            )}>
+            {file ? <FileVideo size={32} aria-hidden="true" /> : <UploadSimple size={32} aria-hidden="true" />}
+            {file ? (
+              <span className="grid gap-1">
+                <span className="break-all font-medium">{file.name}</span>
+                <span className="text-sm text-muted">{formatSize(file.size)} · {t("upload.change")}</span>
+              </span>
+            ) : (
+              <span className="grid gap-1">
+                <span className="font-medium">{t("upload.drop")}</span>
+                <span className="text-sm text-muted">{t("upload.browse")}</span>
+              </span>
+            )}
+            <input ref={fileInput} id={ids.file} type="file" accept={ACCEPT} aria-labelledby={`${ids.file}-label`}
+              aria-describedby={ids.help} required disabled={busy} className="sr-only"
+              onChange={(e) => pick(e.target.files?.[0])} />
+          </label>
           <p id={ids.help} className="text-sm text-muted">{t("upload.fileHelp")}</p>
         </div>
       ) : (
@@ -139,21 +174,13 @@ export function UploadForm(props: { initialMode?: Mode; defaultStyle?: (typeof S
           <label htmlFor={ids.link} className="text-sm font-medium">{t("new.link")}</label>
           <input id={ids.link} type="url" inputMode="url" required disabled={busy} value={link}
             onChange={(e) => setLink(e.target.value)} aria-describedby={ids.linkHelp}
-            placeholder="https://" className={field} />
+            placeholder="https://drive.google.com/…" autoComplete="off" spellCheck={false} autoCapitalize="none" className={inputClass} />
           <p id={ids.linkHelp} className="text-sm text-muted">{t("new.linkHelp")}</p>
           {/youtu/.test(link) && <p className="text-sm text-muted">{t("new.youtubeNote")}</p>}
         </div>
       )}
 
-      <div className="grid gap-2">
-        <label htmlFor={ids.style} className="text-sm font-medium">{t("upload.style")}</label>
-        <select id={ids.style} value={style} disabled={busy} className={field}
-          onChange={(e) => setStyle(e.target.value as (typeof STYLES)[number])}>
-          {STYLES.map((s) => (
-            <option key={s} value={s}>{t(`upload.style.${s}`)}</option>
-          ))}
-        </select>
-      </div>
+      <StylePicker legend={t("upload.style")} name="style" value={style} onChange={setStyle} disabled={busy} />
 
       <label htmlFor={ids.hook} className="flex items-center gap-3 text-sm">
         <input id={ids.hook} type="checkbox" checked={withHook} disabled={busy}
@@ -179,7 +206,7 @@ export function UploadForm(props: { initialMode?: Mode; defaultStyle?: (typeof S
 
       <button type="submit" disabled={!ready || busy}
         className={buttonClass("primary", "lg") + " justify-self-start"}>
-        {t("upload.submit")}
+        {busy ? `${t("upload.submit")}…` : t("upload.submit")}
       </button>
     </form>
   );

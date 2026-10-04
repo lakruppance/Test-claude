@@ -1,8 +1,10 @@
 "use client";
 
+import { CheckCircle, Circle, CircleNotch, XCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { scoreTone } from "@/components/ui";
+import { StateMessage } from "@/components/state-pages";
+import { ButtonLink, scoreTone } from "@/components/ui";
 import { t } from "@/i18n/messages";
 import type { CostSummary } from "@/lib/costs";
 import { subscribeToRows } from "@/lib/realtime";
@@ -41,7 +43,7 @@ type JobPayload = {
   costs: CostSummary | null;
 };
 
-const STEPS = ["prepare", "transcribe", "detect", "render"];
+const STEPS = ["fetch", "prepare", "transcribe", "detect", "render"];
 const TERMINAL = new Set(["succeeded", "failed", "canceled"]);
 // Link imports that failed for reasons only a direct upload can work around.
 const UPLOAD_INSTEAD = new Set(["youtube_blocked", "video_age_restricted", "file_not_shared", "youtube_disabled"]);
@@ -78,19 +80,22 @@ export function JobView({ id }: { id: string }) {
     };
   }, [id]);
 
-  if (missing) return <p>{t("job.notFound")}</p>;
+  if (missing) {
+    return <StateMessage title={t("state.notFound.title")} lead={t("job.notFound")} action={<ButtonLink href="/app">{t("nav.dashboard")}</ButtonLink>} />;
+  }
   if (!data) {
     return (
       <div aria-busy="true" className="grid gap-4">
-        <div className="h-6 w-1/3 animate-pulse rounded bg-line" />
-        <div className="h-2 w-full animate-pulse rounded bg-line" />
-        <div className="h-40 w-full animate-pulse rounded-2xl bg-line" />
+        <div className="h-10 w-1/2 animate-pulse rounded-2xl bg-line/70" />
+        <div className="h-2 w-full animate-pulse rounded-full bg-line/70" />
+        <div className="h-40 w-full animate-pulse rounded-2xl bg-line/70" />
       </div>
     );
   }
 
   const { job, steps, segments, clips, costs, transcript } = data;
   const stepStatus = new Map(steps.map((s) => [s.step, s.status]));
+  const visibleSteps = STEPS.filter((s) => s !== "fetch" || stepStatus.has("fetch"));
   const duration = Number(job.duration_seconds ?? 0);
   const clipBySegment = new Map(clips.map((c) => [c.segment_id, c]));
   const inSegment = (s: { start: number; end: number }) =>
@@ -98,23 +103,29 @@ export function JobView({ id }: { id: string }) {
 
   return (
     <div className="grid gap-12">
-      <section className="grid gap-4" aria-live="polite">
+      <section className="grid gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-display text-xl font-bold">{job.source_filename}</h2>
+          <h1 className="min-w-0 break-words font-display text-3xl font-bold tracking-tight">{job.source_filename ?? t("job.untitled")}</h1>
           <p className="text-sm">
-            {t(`job.status.${job.status}`)}
-            {job.status !== "succeeded" && job.status !== "failed" && <> : <span className="font-mono">{Math.round(job.progress)} %</span></>}
+            <span aria-live="polite">{t(`job.status.${job.status}`)}</span>
+            {job.status !== "succeeded" && job.status !== "failed" && <> : <span className="font-mono">{Math.round(job.progress)}&nbsp;%</span></>}
           </p>
         </div>
         {job.status !== "succeeded" && (
           <>
-            <progress max={100} value={job.progress} className="h-2 w-full accent-gold" />
-            <ol className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
-              {STEPS.map((step) => (
-                <li key={step} className={stepStatus.get(step) === "succeeded" ? "font-semibold" : stepStatus.get(step) === "failed" ? "text-danger" : "text-muted"}>
-                  {t(`job.step.${step}`)}
-                </li>
-              ))}
+            <progress max={100} value={job.progress} className="h-2 w-full accent-gold" aria-label={t("job.progress")} />
+            <ol className="grid grid-cols-2 gap-3 text-sm md:grid-flow-col md:auto-cols-fr md:grid-cols-none">
+              {visibleSteps.map((step) => {
+                const status = stepStatus.get(step) ?? "pending";
+                const Icon = status === "succeeded" ? CheckCircle : status === "failed" ? XCircle : status === "running" ? CircleNotch : Circle;
+                return (
+                  <li key={step} className={`flex items-center gap-2 ${status === "succeeded" || status === "running" ? "font-semibold" : status === "failed" ? "text-danger" : "text-muted"}`}>
+                    <Icon size={18} weight={status === "succeeded" ? "fill" : "regular"} aria-hidden="true"
+                      className={status === "running" ? "animate-spin text-ink" : status === "succeeded" ? "text-gold" : undefined} />
+                    <span>{t(`job.step.${step}`)}<span className="sr-only">, {t(`job.stepStatus.${status}`)}</span></span>
+                  </li>
+                );
+              })}
             </ol>
           </>
         )}

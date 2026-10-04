@@ -1,5 +1,6 @@
 "use client";
 
+import { Pause, Play } from "@phosphor-icons/react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Photo } from "./photo";
@@ -15,11 +16,13 @@ const LINES = [
 export function PhonePreview() {
   const reduce = useReducedMotion();
   const [tick, setTick] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const playing = !reduce && !paused;
   useEffect(() => {
-    if (reduce) return;
+    if (!playing) return;
     const id = setInterval(() => setTick((t) => (t + 1) % 9), 420);
     return () => clearInterval(id);
-  }, [reduce]);
+  }, [playing]);
   const line = LINES[Math.floor(tick / 3)];
   const active = tick % 3;
 
@@ -45,6 +48,13 @@ export function PhonePreview() {
           ))}
         </p>
       </div>
+      {!reduce && (
+        <button type="button" onClick={() => setPaused((p) => !p)} aria-pressed={paused}
+          aria-label={paused ? "Lire l'animation" : "Mettre l'animation en pause"}
+          className="absolute bottom-4 right-4 grid size-9 place-items-center rounded-full bg-[#121314]/80 text-white transition-colors hover:bg-[#121314]">
+          {paused ? <Play size={16} weight="fill" aria-hidden="true" /> : <Pause size={16} weight="fill" aria-hidden="true" />}
+        </button>
+      )}
       <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-[#121314]/80 px-3 py-1 text-xs font-semibold text-white">
         <span className="font-mono">87</span>
         <span className="text-white/70">score</span>

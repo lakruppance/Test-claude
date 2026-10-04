@@ -7,6 +7,7 @@
   --surface: #ffffff;
   --muted: #5b5e63;
   --line: #e4e4e0;
+  --control: #86898e; /* form control borders: 3:1 against paper and surface */
   --gold: #f5b000;
   --gold-soft: #fff3cc;
   --danger: #b42318;
@@ -22,6 +23,7 @@
     --surface: #17181a;
     --muted: #a3a6ab;
     --line: #2a2c2f;
+    --control: #6b6e73;
     --gold-soft: #3a2e08;
     --danger: #f97066;
     --shadow: 0 0 0;
@@ -36,6 +38,7 @@
   --color-surface: var(--surface);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-control: var(--control);
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
   --color-danger: var(--danger);

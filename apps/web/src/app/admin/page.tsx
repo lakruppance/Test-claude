@@ -51,7 +51,7 @@ export default async function AdminPage() {
       </header>
 
       <section className="grid gap-3">
-        <h2 className="text-xl font-semibold">{t("admin.month")}</h2>
+        <h2 className="font-display text-xl font-bold">{t("admin.month")}</h2>
         <dl className="grid grid-cols-1 gap-4 font-mono text-sm sm:grid-cols-3">
           <div><dt className="text-muted">{t("admin.totalCost")}</dt><dd className="text-lg">{usd(monthCost)}</dd></div>
           <div><dt className="text-muted">{t("admin.totalMinutes")}</dt><dd className="text-lg">{monthMinutes.toFixed(1)}</dd></div>
@@ -60,7 +60,7 @@ export default async function AdminPage() {
       </section>
 
       <section className="grid gap-3">
-        <h2 className="text-xl font-semibold">{t("admin.failedJobs")}</h2>
+        <h2 className="font-display text-xl font-bold">{t("admin.failedJobs")}</h2>
         {(failed.data ?? []).length === 0 ? (
           <p className="text-sm text-muted">{t("admin.noFailures")}</p>
         ) : (
@@ -90,13 +90,13 @@ export default async function AdminPage() {
       </section>
 
       <section className="grid gap-3">
-        <h2 className="text-xl font-semibold">{t("admin.costs")}</h2>
+        <h2 className="font-display text-xl font-bold">{t("admin.costs")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-line">
               <tr><th className={th}>{t("admin.col.date")}</th><th className={th}>{t("admin.col.user")}</th><th className={th}>{t("admin.col.file")}</th><th className={th}>{t("admin.col.duration")}</th><th className={th}>{t("admin.col.cost")}</th><th className={th}>{t("admin.col.perMinute")}</th></tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 font-mono dark:divide-zinc-800">
+            <tbody className="divide-y divide-line font-mono">
               {(recent.data ?? []).map((job) => {
                 const minutes = Number(job.duration_seconds ?? 0) / 60;
                 return (
@@ -116,7 +116,7 @@ export default async function AdminPage() {
       </section>
 
       <section className="grid gap-3">
-        <h2 className="text-xl font-semibold">{t("admin.users")}</h2>
+        <h2 className="font-display text-xl font-bold">{t("admin.users")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-line">

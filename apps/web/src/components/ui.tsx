@@ -31,7 +31,7 @@ export function ButtonLink(props: { href: string; variant?: keyof typeof BUTTON;
 }
 
 export const inputClass =
-  "w-full rounded-[10px] border border-line bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted";
+  "w-full rounded-[10px] border border-control bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted";
 
 export function PageTitle({ title, lead, children }: { title: string; lead?: string; children?: React.ReactNode }) {
   return (

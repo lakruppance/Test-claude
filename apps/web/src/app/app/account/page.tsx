@@ -27,7 +27,7 @@ export default async function AccountPage() {
         />
       </section>
 
-      <section className={section} aria-labelledby="account-plan">
+      <section id="abonnement" className={`${section} scroll-mt-24`} aria-labelledby="account-plan">
         <h2 id="account-plan" className="font-display text-xl font-bold">{t("account.plan")}</h2>
         <div className="grid gap-4">
           <p>{t("account.planLine", { plan: plan.name, minutes: plan.monthly_minutes, max: plan.max_video_minutes })}</p>
