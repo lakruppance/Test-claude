@@ -1,14 +1,12 @@
 import type Stripe from "stripe";
 import { stripe, webhookSecret } from "./billing";
-import { env } from "./env";
 import { supabaseAdmin } from "./supabase-admin";
 
 // Local-only billing simulation. It builds the same events Stripe would send, signs them with the
 // webhook secret and posts them to the real webhook endpoint: the production code path runs.
 
 export function fakeBillingEnabled() {
-  const e = env();
-  return e.APP_ENV === "development" && e.BILLING_PROVIDER === "fake";
+  return (process.env.APP_ENV ?? "development") === "development" && process.env.BILLING_PROVIDER === "fake";
 }
 
 export type FakeAction =

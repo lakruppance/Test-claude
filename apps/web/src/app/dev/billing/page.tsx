@@ -5,6 +5,7 @@ import { currentUser } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const metadata = { title: "Paiement simulé" };
+export const dynamic = "force-dynamic";
 
 // Stands in for Stripe Checkout and the customer portal in local development.
 export default async function FakeBillingPage({ searchParams }: PageProps<"/dev/billing">) {

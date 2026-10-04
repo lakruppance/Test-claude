@@ -10,7 +10,8 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
 type Tenant = { id: string; client: SupabaseClient; jobId: string; segmentId: string };
-const password = "Isolation-Test-2026";
+// Throwaway accounts: a fresh random password per run.
+const password = `Aa1-${crypto.randomUUID()}`;
 const stamp = Date.now();
 
 async function makeTenant(name: string): Promise<Tenant> {
