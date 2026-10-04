@@ -2,7 +2,7 @@
 
 SaaS qui génère des clips verticaux sous-titrés à partir de vidéos longues (upload, Drive/Dropbox, YouTube).
 
-État : **phase 4, identité et application complète** (voir [`docs/phase-4.md`](docs/phase-4.md) ; précédentes : [phase 3](docs/phase-3.md), [phase 2](docs/phase-2.md), [phase 1](docs/phase-1.md)). Identité : [`docs/design/marque.md`](docs/design/marque.md). Voir [`docs/phase-0.md`](docs/phase-0.md) pour les choix techniques, les coûts estimés et les comptes à créer, et [`.env.example`](.env.example) pour les variables d'environnement.
+État : **phase 5, paiement Stripe** (voir [`docs/phase-5.md`](docs/phase-5.md) ; précédentes : [phase 4](docs/phase-4.md), [audit UI](docs/audit-ui.md), [phase 3](docs/phase-3.md), [phase 2](docs/phase-2.md), [phase 1](docs/phase-1.md)). Identité : [`docs/design/marque.md`](docs/design/marque.md). Voir [`docs/phase-0.md`](docs/phase-0.md) pour les choix techniques, les coûts estimés et les comptes à créer, et [`.env.example`](.env.example) pour les variables d'environnement.
 
 ## Tester en local, sans abonnement
 

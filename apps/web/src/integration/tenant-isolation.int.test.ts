@@ -41,6 +41,10 @@ async function makeTenant(name: string): Promise<Tenant> {
   const { data: channel } = await admin.from("channels").insert({ user_id: id, youtube_channel_id: `UC${channelSuffix}`, title: name })
     .select("id").single().throwOnError();
   await admin.from("channel_videos").insert({ channel_id: channel!.id, user_id: id, youtube_video_id: `${name}xxxxxxxxxxx`.slice(0, 11), title: "v", published_at: new Date().toISOString() }).throwOnError();
+  await admin.rpc("sync_subscription", {
+    p_user: id, p_customer: `cus_${name}`, p_subscription: `sub_${name}_${jobId.slice(0, 8)}`, p_plan: "pro",
+    p_status: "active", p_period_end: null, p_cancel_at_period_end: false, p_event_at: new Date().toISOString(),
+  }).throwOnError();
   return { id, client, jobId, segmentId: seg!.id };
 }
 
@@ -56,7 +60,7 @@ afterAll(async () => {
   for (const t of [a, b]) if (t) await admin.auth.admin.deleteUser(t.id);
 });
 
-const TABLES = ["jobs", "job_steps", "transcripts", "segments", "clips", "rights_declarations", "usage_events", "profiles", "channels", "channel_videos"] as const;
+const TABLES = ["jobs", "job_steps", "transcripts", "segments", "clips", "rights_declarations", "usage_events", "profiles", "channels", "channel_videos", "subscriptions"] as const;
 
 describe("tenant isolation through the API (RLS)", () => {
   it.each(TABLES)("A reads only own rows in %s", async (table) => {
@@ -73,8 +77,19 @@ describe("tenant isolation through the API (RLS)", () => {
     expect((await a.client.from("segments").select("id").eq("id", b.segmentId)).data).toEqual([]);
   });
 
-  it("A cannot read cost events at all", async () => {
+  it("A cannot read cost events or webhook events at all", async () => {
     expect((await a.client.from("cost_events").select("*")).data).toEqual([]);
+    expect((await a.client.from("stripe_events").select("*")).error?.code).toBe("42501");
+  });
+
+  it("A cannot write subscription state nor call the webhook sync", async () => {
+    expect((await a.client.from("subscriptions").update({ plan_id: "studio" }).eq("user_id", a.id)).error?.code).toBe("42501");
+    expect((await a.client.from("profiles").update({ stripe_customer_id: "cus_x" }).eq("id", a.id)).error?.code).toBe("42501");
+    const sync = await a.client.rpc("sync_subscription", {
+      p_user: a.id, p_customer: "cus_x", p_subscription: "sub_x", p_plan: "studio", p_status: "active",
+      p_period_end: null, p_cancel_at_period_end: false, p_event_at: new Date().toISOString(),
+    });
+    expect(sync.error).not.toBeNull();
   });
 
   it("A cannot modify or delete B's data", async () => {

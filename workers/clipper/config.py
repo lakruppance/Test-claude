@@ -57,6 +57,8 @@ class Settings:
         default_factory=lambda: _env("CLAUDE_MODEL_LIGHT", "claude-haiku-4-5")
     )
     claude_effort: str = field(default_factory=lambda: _env("CLAUDE_EFFORT", "medium"))
+    # Burned into free-plan clips (brand name; the product name lives in the web app config).
+    watermark_text: str = field(default_factory=lambda: _env("WATERMARK_TEXT", "Fait avec Pépite"))
     assemblyai_speech_models: list[str] = field(
         default_factory=lambda: [
             m.strip() for m in _env("ASSEMBLYAI_SPEECH_MODELS", "universal").split(",") if m.strip()

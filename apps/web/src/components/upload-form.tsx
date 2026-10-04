@@ -37,12 +37,14 @@ export function UploadForm(props: { initialMode?: Mode; defaultStyle?: SubtitleS
   const [progress, setProgress] = useState<number | null>(null);
   const [resuming, setResuming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failedCode, setFailedCode] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const fail = (code?: string) => {
     setProgress(null);
     setResuming(false);
+    setFailedCode(code ?? null);
     setError(code && code !== "invalid_request" ? t(`upload.error.${code}`) : t("upload.error"));
   };
 
@@ -202,7 +204,14 @@ export function UploadForm(props: { initialMode?: Mode; defaultStyle?: SubtitleS
           <progress max={1} value={progress ?? 0} className="h-2 w-full accent-gold" />
         </div>
       )}
-      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+          {failedCode === "quota_exhausted" && (
+            <> <a href="/app/account#abonnement" className="font-semibold text-ink underline underline-offset-4">{t("billing.seePlans")}</a></>
+          )}
+        </p>
+      )}
 
       <button type="submit" disabled={!ready || busy}
         className={buttonClass("primary", "lg") + " justify-self-start"}>

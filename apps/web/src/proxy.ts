@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeNext } from "./lib/safe-next";
 import { checkBasicAuth } from "./lib/basic-auth";
 
 const PROTECTED = ["/app", "/admin"];
@@ -47,14 +48,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   if (signedIn && AUTH_PAGES.includes(path)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/app";
-    url.search = "";
-    return NextResponse.redirect(url);
+    // Already signed in: go where the sign-in was meant to lead (e.g. a plan's checkout).
+    return NextResponse.redirect(new URL(safeNext(request.nextUrl.searchParams.get("next")), request.url));
   }
   return response;
 }
 
+// The Stripe webhook is excluded: Stripe cannot send the staging password, and the endpoint
+// authenticates every request by its signature instead.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|svg|ico)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|.*\\.(?:png|jpg|svg|ico)$).*)"],
 };

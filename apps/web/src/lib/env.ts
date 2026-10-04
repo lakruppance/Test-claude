@@ -19,6 +19,16 @@ const schema = z.object({
   ORCHESTRATOR: z.enum(["trigger", "local"]).default("trigger"),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(5 * 1024 ** 3),
   CLIP_STYLE_DEFAULT: z.enum(["impact", "boite", "epure"]).default("impact"),
+  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  // "stripe" (staging/production) or "fake" (local only: simulated checkout, real signed webhook).
+  BILLING_PROVIDER: z.enum(["stripe", "fake"]).default("stripe"),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  // VAT: false = prices are tax-inclusive as displayed; true = Stripe Tax computes VAT.
+  STRIPE_AUTOMATIC_TAX: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type Env = z.infer<typeof schema>;

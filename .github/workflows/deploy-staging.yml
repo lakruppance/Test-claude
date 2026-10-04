@@ -83,6 +83,7 @@ jobs:
           MAX_UPLOAD_BYTES: ${{ vars.MAX_UPLOAD_BYTES || '5368709120' }}
           # Optional, only with explicit approval (see docs/phase-3.md)
           YTDLP_PROXY_URL: ${{ secrets.YTDLP_PROXY_URL }}
+          WATERMARK_TEXT: ${{ vars.WATERMARK_TEXT }}
         run: |
           umask 077
           tmp="$(mktemp)"
@@ -96,7 +97,7 @@ jobs:
           missing = [k for k in keys if not os.environ.get(k)]
           if missing:
               sys.exit(f"Missing staging settings: {', '.join(missing)}")
-          optional = ["YTDLP_ENABLED", "MAX_UPLOAD_BYTES", "YTDLP_PROXY_URL"]
+          optional = ["YTDLP_ENABLED", "MAX_UPLOAD_BYTES", "YTDLP_PROXY_URL", "WATERMARK_TEXT"]
           values = {k: os.environ[k] for k in keys}
           values.update({k: os.environ[k] for k in optional if os.environ.get(k)})
           json.dump(values, open(sys.argv[1], "w"))
@@ -136,8 +137,27 @@ jobs:
           WORKER_ENDPOINT_URL: ${{ needs.worker.outputs.endpoint }}
           WORKER_SHARED_SECRET: ${{ secrets.WORKER_SHARED_SECRET }}
 
+  billing:
+    # Stripe products, prices (lookup keys) and portal settings. Test mode key on staging.
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: node scripts/setup-stripe.mjs
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
   web:
-    needs: [orchestrator, storage]
+    needs: [orchestrator, storage, billing]
     runs-on: ubuntu-latest
     environment:
       name: staging

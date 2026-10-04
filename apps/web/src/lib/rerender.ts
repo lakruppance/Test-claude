@@ -11,6 +11,9 @@ export async function runRerender(clipId: string, sleep: (s: number) => Promise<
     .eq("id", clipId)
     .single();
   if (!clip) return;
+  // The plan at render time decides: after an upgrade, regenerating removes the watermark.
+  const { data: profile } = await db.from("profiles").select("plans(watermark)").eq("id", clip.user_id).single();
+  const watermark = (profile?.plans as unknown as { watermark: boolean } | null)?.watermark ?? true;
   for (let attempt = 1; attempt <= 3; attempt++) {
     const callId = await startStep("render", {
       job_id: clip.job_id,
@@ -20,6 +23,7 @@ export async function runRerender(clipId: string, sleep: (s: number) => Promise<
       segment_id: clip.segment_id,
       style: clip.style,
       with_hook: clip.with_hook,
+      watermark,
       clip_id: clip.id,
     });
     for (;;) {

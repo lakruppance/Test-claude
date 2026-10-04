@@ -186,7 +186,7 @@ def detect(job: JobRef, settings: Settings, r2, db, messages, resources: Resourc
 
 def render(job: JobRef, segment_id: str, style: str, settings: Settings, r2, db,
            resources: Resources, attempt: int = 1, with_hook: bool = True,
-           clip_id: str | None = None) -> dict[str, Any]:
+           clip_id: str | None = None, watermark: bool = True) -> dict[str, Any]:
     """Renders a segment. With clip_id, re-renders that existing clip (new bounds or style)."""
     from .reframe import FaceDetector, plan_crop, probe
     from .render import render_clip, thumbnail
@@ -230,7 +230,8 @@ def render(job: JobRef, segment_id: str, style: str, settings: Settings, r2, db,
         ass = build_ass(transcript.words, segment.start, segment.end, style,
                         hook_text=segment.accroche_ecran if with_hook else "")
         out = tmpdir / f"clip-{seg_row['rank']:02d}-{style}.mp4"
-        render_clip(source, out, segment.start, segment.end, info, plan, ass, FONTS_DIR, tmpdir)
+        render_clip(source, out, segment.start, segment.end, info, plan, ass, FONTS_DIR, tmpdir,
+                    watermark=settings.watermark_text if watermark else None)
         thumb = tmpdir / "thumb.jpg"
         thumbnail(out, thumb)
         version = int(time.time())
@@ -246,6 +247,7 @@ def render(job: JobRef, segment_id: str, style: str, settings: Settings, r2, db,
         "user_id": job.user_id,
         "style": style,
         "with_hook": with_hook,
+        "watermarked": watermark,
         "reframe_mode": plan.mode,
         "storage_key": clip_key,
         "thumbnail_key": thumb_key,

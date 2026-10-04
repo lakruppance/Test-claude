@@ -83,3 +83,7 @@ Puis relancez `scripts/local-up.sh`. Vos valeurs sont conservées d'un lancement
 | Le worker ne démarre pas | `docker compose logs worker` |
 | Le traitement échoue à « Sélection des passages » avec un message de clé | Complétez `ANTHROPIC_API_KEY` dans `.env.local`, puis relancez |
 | Ports déjà utilisés (3000, 8333, 8787, 54321, 54324) | Fermez l'application qui les occupe |
+
+## Paiement en local
+
+Par défaut, `BILLING_PROVIDER=fake` : les boutons de plan mènent à une page de paiement simulé. Aucun compte Stripe n'est nécessaire et rien n'est débité. Pour tester avec un vrai compte Stripe en mode test, voir `docs/phase-5.md`, section 5.

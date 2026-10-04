@@ -74,6 +74,7 @@ def execute(step: str, payload: dict[str, Any]) -> dict[str, Any]:
         return pipeline.render(job, payload["segment_id"], payload.get("style", "impact"),
                                settings, R2(), Database(), res, attempt,
                                with_hook=payload.get("with_hook", True),
+                               watermark=payload.get("watermark", True),
                                clip_id=payload.get("clip_id"))
     raise ValueError(f"unknown step {step}")
 

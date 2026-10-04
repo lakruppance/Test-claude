@@ -15,9 +15,30 @@ def _filter_escape(path: str | Path) -> str:
     return str(path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
 
 
-def build_filtergraph(plan: CropPlan, ass_path: Path, fonts_dir: Path, cmd_path: Path) -> str:
+WATERMARK_FONT = "Poppins-Bold.ttf"
+
+
+def _text_escape(text: str) -> str:
+    # drawtext text value inside a quoted filter argument.
+    return text.replace("\\", "\\\\").replace("'", "\u2019").replace(":", "\\:").replace("%", "\\%")
+
+
+def watermark_filter(text: str, fonts_dir: Path) -> str:
+    """Free-plan watermark: right-aligned, under the hook line and clear of the caption zone,
+    semi-transparent with a soft shadow so it reads on any background."""
+    font = _filter_escape(fonts_dir / WATERMARK_FONT)
+    return (
+        f"drawtext=fontfile='{font}':text='{_text_escape(text)}':fontsize=44:"
+        "fontcolor=white@0.72:shadowcolor=black@0.45:shadowx=2:shadowy=2:"
+        "x=w-tw-56:y=h*0.215"
+    )
+
+
+def build_filtergraph(plan: CropPlan, ass_path: Path, fonts_dir: Path, cmd_path: Path,
+                      watermark: str | None = None) -> str:
     subs = f"ass=filename='{_filter_escape(ass_path)}':fontsdir='{_filter_escape(fonts_dir)}'"
-    tail = f"setsar=1,fps={OUT_FPS},{subs},format=yuv420p[v]"
+    mark = f",{watermark_filter(watermark, fonts_dir)}" if watermark else ""
+    tail = f"setsar=1,fps={OUT_FPS},{subs}{mark},format=yuv420p[v]"
     if plan.mode == "track":
         x0 = plan.xs[0] if plan.xs else 0
         return (
@@ -47,6 +68,7 @@ def render_clip(
     fonts_dir: Path,
     workdir: Path,
     preset: str = "medium",
+    watermark: str | None = None,
 ) -> None:
     workdir.mkdir(parents=True, exist_ok=True)
     ass_path = workdir / f"{out_path.stem}.ass"
@@ -54,7 +76,7 @@ def render_clip(
     cmd_path = workdir / f"{out_path.stem}.cmd"
     cmd_path.write_text(sendcmd_script(plan, end - start, OUT_FPS) if plan.mode == "track" else "")
 
-    graph = build_filtergraph(plan, ass_path, fonts_dir, cmd_path)
+    graph = build_filtergraph(plan, ass_path, fonts_dir, cmd_path, watermark)
     args = [
         "ffmpeg", "-y", "-v", "error",
         "-ss", f"{start:.3f}", "-to", f"{end:.3f}", "-i", str(source),

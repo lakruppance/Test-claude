@@ -14,7 +14,4 @@ export function authErrorMessage(error: { code?: string } | null | undefined): s
   return t(KNOWN.has(code) ? `auth.error.${code}` : "auth.error.default");
 }
 
-// Only allow same-site relative redirects after sign-in.
-export function safeNext(next: string | null | undefined, fallback = "/app"): string {
-  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : fallback;
-}
+export { safeNext } from "./safe-next";

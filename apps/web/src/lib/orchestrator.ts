@@ -25,7 +25,7 @@ export interface OrchestratorDeps {
   pollCall(callId: string): Promise<CallStatus>;
   sleep(seconds: number): Promise<void>;
   /** Plan limits of the job owner. */
-  getPlanLimits(userId: string): Promise<{ maxVideoMinutes: number }>;
+  getPlanLimits(userId: string): Promise<{ maxVideoMinutes: number; watermark: boolean }>;
   /** Atomically checks the monthly quota and reserves the job's minutes (idempotent per job). */
   reserveMinutes(userId: string, jobId: string, minutes: number): Promise<{ ok: boolean; reason?: string }>;
   /** Gives the reserved minutes back (job failed). Idempotent. */
@@ -202,7 +202,7 @@ async function runJob(deps: OrchestratorDeps, jobId: string) {
       "render",
       segmentIds.map((id) => ({
         key: id,
-        payload: { ...base, segment_id: id, style, with_hook: withHook },
+        payload: { ...base, segment_id: id, style, with_hook: withHook, watermark: limits.watermark },
       })),
       prior?.attempts ?? 0,
       (n, total) => deps.updateJob(jobId, { progress: overallProgress("render", n / total) }),

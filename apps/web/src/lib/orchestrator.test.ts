@@ -30,7 +30,7 @@ function fakeDeps(script: Script, existingSteps: StepRow[] = [], quotaOk = true)
       return next ?? defaultResult(step);
     },
     sleep: async () => {},
-    getPlanLimits: async () => ({ maxVideoMinutes: 20 }),
+    getPlanLimits: async () => ({ maxVideoMinutes: 20, watermark: true }),
     reserveMinutes: async (_u, _j, minutes) => {
       quota.reserved.push(minutes);
       return quotaOk ? { ok: true } : { ok: false, reason: "quota_exceeded" };

@@ -98,3 +98,29 @@ def test_render_produces_vertical_h264_aac(landscape, tmp_path, mode, style):
          str(out)], capture_output=True, text=True, check=True,
     ).stdout.split()
     assert codecs == ["h264", "aac"]
+
+
+def _region(clip: Path, x: int, y: int, w: int, h: int) -> bytes:
+    return subprocess.run(
+        ["ffmpeg", "-v", "error", "-ss", "2", "-i", str(clip), "-frames:v", "1",
+         "-vf", f"crop={w}:{h}:{x}:{y},format=gray", "-f", "rawvideo", "-"],
+        capture_output=True, check=True,
+    ).stdout
+
+
+@needs_ffmpeg
+def test_free_plan_watermark_is_burned_in_only_when_requested(landscape, tmp_path):
+    info = probe(landscape)
+    plan = plan_crop(landscape, 1, 4, info, detector=None)
+    ass = build_ass(words(), 1, 4, "impact", hook_text="")
+    plain, marked = tmp_path / "plain.mp4", tmp_path / "marked.mp4"
+    render_clip(landscape, plain, 1, 4, info, plan, ass, FONTS, tmp_path, preset="ultrafast")
+    render_clip(landscape, marked, 1, 4, info, plan, ass, FONTS, tmp_path, preset="ultrafast",
+                watermark="Fait avec Pépite : l'outil")
+    # Watermark area (right side, ~21% from the top) differs; an area far from it does not.
+    zone = (560, 400, 470, 70)
+    a, b = _region(plain, *zone), _region(marked, *zone)
+    assert sum(abs(x - y) for x, y in zip(a, b, strict=True)) / len(a) > 4
+    far = (40, 1500, 300, 60)
+    c, d = _region(plain, *far), _region(marked, *far)
+    assert sum(abs(x - y) for x, y in zip(c, d, strict=True)) / len(c) < 1.5

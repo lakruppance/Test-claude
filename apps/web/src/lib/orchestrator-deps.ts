@@ -37,12 +37,13 @@ export function supabaseDeps(sleep: (seconds: number) => Promise<void>): Orchest
     async getPlanLimits(userId) {
       const { data, error } = await db
         .from("profiles")
-        .select("plans(max_video_minutes)")
+        .select("plans(max_video_minutes, watermark)")
         .eq("id", userId)
         .single();
       if (error) throw new Error(error.message);
-      const plan = data.plans as unknown as { max_video_minutes: number } | null;
-      return { maxVideoMinutes: plan?.max_video_minutes ?? 20 };
+      const plan = data.plans as unknown as { max_video_minutes: number; watermark: boolean } | null;
+      // Unknown plan: the most restrictive limits (free plan).
+      return { maxVideoMinutes: plan?.max_video_minutes ?? 20, watermark: plan?.watermark ?? true };
     },
     async reserveMinutes(userId, jobId, minutes) {
       const { data, error } = await db.rpc("reserve_minutes", {

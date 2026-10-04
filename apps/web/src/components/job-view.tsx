@@ -47,6 +47,8 @@ const STEPS = ["fetch", "prepare", "transcribe", "detect", "render"];
 const TERMINAL = new Set(["succeeded", "failed", "canceled"]);
 // Link imports that failed for reasons only a direct upload can work around.
 const UPLOAD_INSTEAD = new Set(["youtube_blocked", "video_age_restricted", "file_not_shared", "youtube_disabled"]);
+// Failures a bigger plan solves.
+const PLAN_LIMIT = new Set(["quota_exceeded", "source_too_long"]);
 const usd = (n: number) => `${n.toFixed(4)} $`;
 export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -134,6 +136,9 @@ export function JobView({ id }: { id: string }) {
             <p className="text-danger">{t(`error.${job.error_code ?? "default"}`)}</p>
             {job.error_code && UPLOAD_INSTEAD.has(job.error_code) && (
               <Link href="/app/new" className="justify-self-start text-sm font-semibold underline underline-offset-4">{t("error.uploadInstead")}</Link>
+            )}
+            {job.error_code && PLAN_LIMIT.has(job.error_code) && (
+              <Link href="/app/account#abonnement" className="justify-self-start text-sm font-semibold underline underline-offset-4">{t("billing.seePlans")}</Link>
             )}
           </div>
         )}

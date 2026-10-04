@@ -56,6 +56,12 @@ const FAQ = [
 
 export default async function Landing() {
   const [user, plans] = await Promise.all([currentUser().catch(() => null), loadPlans()]);
+  // Paid plans lead to checkout: through sign-up first when signed out.
+  const planHref = (id: string) => {
+    if (id === "free") return user ? "/app" : "/signup";
+    const target = `/app/account?plan=${id}#abonnement`;
+    return user ? target : `/signup?next=${encodeURIComponent(target)}`;
+  };
   const price = (cents: number) => (cents === 0 ? "0 €" : `${(cents / 100).toFixed(0)} €`);
 
   return (
@@ -236,14 +242,14 @@ export default async function Landing() {
                     <li>{plan.direct_publish ? "Publication YouTube et TikTok" : "Export à télécharger"}</li>
                     {plan.channel_monitoring && <li>Veille de {plan.max_channels} chaîne{plan.max_channels > 1 ? "s" : ""}, traitement auto</li>}
                   </ul>
-                  <ButtonLink href={`/signup?plan=${plan.id}`} variant={featured ? "primary" : "secondary"}>
+                  <ButtonLink href={planHref(plan.id)} variant={featured ? "primary" : "secondary"}>
                     {plan.price_eur_cents === 0 ? "Essayer gratuitement" : `Choisir ${plan.name}`}
                   </ButtonLink>
                 </article>
               );
             })}
           </div>
-          <p className="mt-4 text-sm text-muted">Prix TTC. Le paiement en ligne arrive bientôt : les plans payants s&apos;activent depuis votre compte.</p>
+          <p className="mt-4 text-sm text-muted">Prix TTC, sans engagement. Paiement sécurisé par Stripe, changement de plan ou résiliation depuis votre compte.</p>
         </section>
 
         {/* 7. FAQ */}

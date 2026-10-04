@@ -20,3 +20,9 @@ export function formatSeconds(seconds: number): string {
 export function formatMinutes(minutes: number): string {
   return SECONDS.format(minutes);
 }
+
+const DATE = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeZone: "Europe/Paris" });
+
+export function formatDate(iso: string | null | undefined): string {
+  return iso ? DATE.format(new Date(iso)) : "";
+}
