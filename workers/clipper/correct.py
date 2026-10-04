@@ -40,7 +40,9 @@ CORRECTION_SCHEMA: dict[str, Any] = {
 }
 
 SYSTEM = """You proofread an automatic speech transcript ({language}) that becomes video \
-subtitles. Sentences are numbered: `[s<n>] <text>`.
+subtitles. Sentences are numbered: `[s<n>] <text>`. The recognizer is fast and error-prone: \
+expect several misheard words per minute. Read every sentence and check that each word makes \
+sense in context.
 
 Fix ONLY words the speech recognizer clearly misheard, using the context:
 - wrong homophones or near-homophones (e.g. "cache" for "cash" in a sentence about money);
@@ -48,7 +50,7 @@ Fix ONLY words the speech recognizer clearly misheard, using the context:
 - common anglicisms, brands and tech terms written phonetically (e.g. "sasse" for "SaaS").
 
 Never rephrase, never fix the speaker's grammar, slang or style, never change a word that is \
-plausible as spoken. When unsure, leave it.
+plausible as spoken. Leave a word only when no correction clearly fits the context.
 
 For each fix return the sentence number, `original`: the exact word or consecutive words as \
 they appear in that sentence, and `corrected`: the replacement. Prefer one word per fix. \

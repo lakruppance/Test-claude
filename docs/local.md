@@ -10,7 +10,7 @@ Ce mode sert à tester à petite échelle sur votre propre machine. Il n'y a auc
 | Trigger.dev | Orchestrateur intégré au serveur web | 0 |
 | AssemblyAI | Whisper en local (faster-whisper), AssemblyAI en option | 0 |
 | Vercel | `npm run dev` sur votre machine | 0 |
-| Claude (sélection des passages) | API Anthropic | **Paiement à l'usage**, environ 3 centimes par vidéo de 10 min (estimation) |
+| Claude (sélection des passages) | API Anthropic | **Paiement à l'usage**, environ 6 centimes par vidéo de 10 min (mesuré : 4,8 centimes pour 8 min) |
 
 Seule la clé API Anthropic est payante. Elle fonctionne sur crédits prépayés, sans abonnement. Pour un tout premier test, vous pouvez aussi vous en passer : voir l'étape 3.
 
@@ -59,9 +59,8 @@ Puis relancez `scripts/local-up.sh`. Vos valeurs sont conservées d'un lancement
 | Variable | Effet |
 |---|---|
 | `TRANSCRIPTION_PROVIDER=whisper` | Transcription locale gratuite, par défaut |
-| `WHISPER_MODEL=small` | `base` (plus rapide), `small` (bon compromis), `medium` (plus précis, plus lent) |
+| `WHISPER_MODEL=large-v3-turbo` | Par défaut. `small` ou `medium` : plus rapides mais nettement moins précis |
 | `TRANSCRIPTION_PROVIDER=assemblyai` + `ASSEMBLYAI_API_KEY` | Transcription plus précise. Le compte gratuit inclut 185 h |
-| `WHISPER_MODEL=large-v3-turbo` | Transcription locale nettement plus précise que `small` (plus lente, ~1,6 Go à télécharger) |
 | `TRANSCRIPT_CORRECTION=true` | Claude Haiku corrige les mots mal entendus autour des passages retenus (~0,2 à 0,3 centime par vidéo). `false` pour désactiver |
 | `CLIPS_TO_RENDER=3` | Nombre de clips rendus par vidéo |
 | `MAX_SOURCE_MINUTES=30` | Durée maximale acceptée en local |
