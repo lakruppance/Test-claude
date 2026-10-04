@@ -4,8 +4,9 @@ import type { CallStatus, StepName, StepPayload } from "./worker";
 
 type Script = Partial<Record<StepName, CallStatus[]>>;
 
-function fakeDeps(script: Script, existingSteps: StepRow[] = []) {
-  const job: Record<string, unknown> = { id: "j1", user_id: null, status: "queued", options: { style: "boite" } };
+function fakeDeps(script: Script, existingSteps: StepRow[] = [], quotaOk = true) {
+  const job: Record<string, unknown> = { id: "j1", user_id: "u1", status: "queued", options: { style: "boite" } };
+  const quota = { reserved: [] as number[], released: 0 };
   const steps = new Map(existingSteps.map((s) => [s.step, { ...s }]));
   const started: { step: StepName; payload: StepPayload }[] = [];
   const calls = new Map<string, StepName>();
@@ -29,8 +30,14 @@ function fakeDeps(script: Script, existingSteps: StepRow[] = []) {
       return next ?? defaultResult(step);
     },
     sleep: async () => {},
+    getPlanLimits: async () => ({ maxVideoMinutes: 20 }),
+    reserveMinutes: async (_u, _j, minutes) => {
+      quota.reserved.push(minutes);
+      return quotaOk ? { ok: true } : { ok: false, reason: "quota_exceeded" };
+    },
+    releaseMinutes: async () => void quota.released++,
   };
-  return { deps, job, steps, started };
+  return { deps, job, steps, started, quota };
 }
 
 function defaultResult(step: StepName): CallStatus {
@@ -45,18 +52,27 @@ function defaultResult(step: StepName): CallStatus {
 
 describe("processJob", () => {
   it("runs all steps, renders each selected segment and finishes at 100%", async () => {
-    const { deps, job, started } = fakeDeps({ transcribe: [{ status: "pending" }] });
-    const out = await processJob(deps, "j1", "anonymous");
+    const { deps, job, started, quota } = fakeDeps({ transcribe: [{ status: "pending" }] });
+    const out = await processJob(deps, "j1");
     expect(out).toEqual({ skipped: false, clips: 3 });
     expect(started.map((s) => s.step)).toEqual(["prepare", "transcribe", "detect", "render", "render", "render"]);
     expect(started.filter((s) => s.step === "render").every((s) => s.payload.style === "boite")).toBe(true);
     expect(job).toMatchObject({ status: "succeeded", progress: 100, language: "fr", duration_seconds: 600 });
+    expect(quota.reserved).toEqual([10]); // 600 s = 10 min reserved after preparation
+    expect(started.every((s) => s.payload.max_source_minutes === 20 && s.payload.owner_id === "u1")).toBe(true);
+  });
+
+  it("stops and refunds when the monthly quota is exceeded", async () => {
+    const { deps, started, quota } = fakeDeps({}, [], false);
+    await expect(processJob(deps, "j1")).rejects.toMatchObject({ code: "quota_exceeded" });
+    expect(started.map((s) => s.step)).toEqual(["prepare"]);
+    expect(quota.released).toBe(1);
   });
 
   it("retries a retryable failure and resumes", async () => {
     const crash: CallStatus = { status: "failed", retryable: true, code: "worker_crash", message: "OOM" };
     const { deps, job, started, steps } = fakeDeps({ detect: [crash] });
-    await processJob(deps, "j1", "anonymous");
+    await processJob(deps, "j1");
     const detects = started.filter((s) => s.step === "detect");
     expect(detects.map((d) => d.payload.attempt)).toEqual([1, 2]);
     expect(steps.get("detect")?.attempts).toBe(2);
@@ -65,8 +81,9 @@ describe("processJob", () => {
 
   it("stops with a stable error code on a non-retryable failure", async () => {
     const bad: CallStatus = { status: "failed", retryable: false, code: "no_speech", message: "no speech" };
-    const { deps, steps, started } = fakeDeps({ transcribe: [bad] });
-    await expect(processJob(deps, "j1", "anonymous")).rejects.toMatchObject({ code: "no_speech" });
+    const { deps, steps, started, quota } = fakeDeps({ transcribe: [bad] });
+    await expect(processJob(deps, "j1")).rejects.toMatchObject({ code: "no_speech" });
+    expect(quota.released).toBe(1);
     expect(steps.get("transcribe")?.status).toBe("failed");
     expect(started.some((s) => s.step === "detect")).toBe(false);
   });
@@ -74,7 +91,7 @@ describe("processJob", () => {
   it(`gives up after ${MAX_STEP_ATTEMPTS} attempts`, async () => {
     const crash: CallStatus = { status: "failed", retryable: true, code: "worker_crash", message: "x" };
     const { deps } = fakeDeps({ prepare: [crash, crash, crash] });
-    await expect(processJob(deps, "j1", "anonymous")).rejects.toMatchObject({ code: "worker_crash" });
+    await expect(processJob(deps, "j1")).rejects.toMatchObject({ code: "worker_crash" });
   });
 
   it("skips steps that already succeeded (resume after a run retry)", async () => {
@@ -83,7 +100,7 @@ describe("processJob", () => {
       { step: "transcribe", status: "succeeded", attempts: 1, output: { language: "en" } },
     ];
     const { deps, started } = fakeDeps({}, done);
-    await processJob(deps, "j1", "anonymous");
+    await processJob(deps, "j1");
     expect(started[0].step).toBe("detect");
   });
 });

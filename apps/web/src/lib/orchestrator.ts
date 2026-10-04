@@ -8,7 +8,7 @@ import type { CallStatus, StepName, StepPayload } from "./worker";
 
 export type JobRow = {
   id: string;
-  user_id: string | null;
+  user_id: string;
   status: string;
   options: { style?: string; with_hook?: boolean } | null;
 };
@@ -23,6 +23,12 @@ export interface OrchestratorDeps {
   startStep(step: StepName, payload: StepPayload): Promise<string>;
   pollCall(callId: string): Promise<CallStatus>;
   sleep(seconds: number): Promise<void>;
+  /** Plan limits of the job owner. */
+  getPlanLimits(userId: string): Promise<{ maxVideoMinutes: number }>;
+  /** Atomically checks the monthly quota and reserves the job's minutes (idempotent per job). */
+  reserveMinutes(userId: string, jobId: string, minutes: number): Promise<{ ok: boolean; reason?: string }>;
+  /** Gives the reserved minutes back (job failed). Idempotent. */
+  releaseMinutes(jobId: string): Promise<void>;
   /** Seconds between polls of running worker calls (default POLL_SECONDS). */
   pollSeconds?: number;
   log?(message: string, data?: Record<string, unknown>): void;
@@ -116,11 +122,30 @@ async function runCalls(
   return results;
 }
 
-export async function processJob(deps: OrchestratorDeps, jobId: string, ownerId: string) {
+export async function processJob(deps: OrchestratorDeps, jobId: string) {
+  try {
+    return await runJob(deps, jobId);
+  } catch (error) {
+    // Expected failure: give the reserved minutes back. Unexpected errors are retried by the
+    // caller, which releases the minutes only once it gives up.
+    if (error instanceof JobFailedError) await deps.releaseMinutes(jobId);
+    throw error;
+  }
+}
+
+export const minutesOf = (seconds: number) => Math.ceil((seconds / 60) * 100) / 100;
+
+async function runJob(deps: OrchestratorDeps, jobId: string) {
   const job = await deps.getJob(jobId);
   if (job.status === "succeeded" || job.status === "canceled") return { skipped: true };
   const done = new Map((await deps.getSteps(jobId)).map((s) => [s.step, s]));
-  const base = { job_id: jobId, owner_id: ownerId, user_id: job.user_id };
+  const limits = await deps.getPlanLimits(job.user_id);
+  const base = {
+    job_id: jobId,
+    owner_id: job.user_id,
+    user_id: job.user_id,
+    max_source_minutes: limits.maxVideoMinutes,
+  };
 
   await deps.updateJob(jobId, {
     status: "running",
@@ -141,6 +166,10 @@ export async function processJob(deps: OrchestratorDeps, jobId: string, ownerId:
   };
 
   const prepared = await simpleStep("prepare");
+  const reservation = await deps.reserveMinutes(job.user_id, jobId, minutesOf(Number(prepared.duration)));
+  if (!reservation.ok) {
+    throw new JobFailedError(reservation.reason ?? "quota_exceeded", "Monthly minutes quota exceeded");
+  }
   await deps.updateJob(jobId, {
     duration_seconds: prepared.duration,
     width: prepared.width,

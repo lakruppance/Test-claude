@@ -53,6 +53,7 @@ const user = {
   CLIPS_TO_RENDER: keep("CLIPS_TO_RENDER", "3"),
   MAX_SOURCE_MINUTES: keep("MAX_SOURCE_MINUTES", "30"),
   LOCAL_WORKER_THREADS: keep("LOCAL_WORKER_THREADS", "2"),
+  NEXT_PUBLIC_AUTH_GOOGLE_ENABLED: keep("NEXT_PUBLIC_AUTH_GOOGLE_ENABLED", "false"),
 };
 
 const lines = (obj) => Object.entries(obj).map(([k, v]) => `${k}=${v}`).join("\n");
@@ -70,7 +71,7 @@ writeFileSync(
 
 const webKeys = ["APP_ENV", "NEXT_PUBLIC_APP_URL", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY", "R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET",
-  "S3_FORCE_PATH_STYLE", "WORKER_ENDPOINT_URL", "ORCHESTRATOR"];
+  "S3_FORCE_PATH_STYLE", "WORKER_ENDPOINT_URL", "ORCHESTRATOR", "NEXT_PUBLIC_AUTH_GOOGLE_ENABLED"];
 const all = { ...managed, ...user };
 writeFileSync(
   `${root}apps/web/.env.local`,

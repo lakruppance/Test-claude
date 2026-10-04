@@ -12,7 +12,7 @@ command -v node >/dev/null || { echo "Node.js 20+ is required: https://nodejs.or
 node -e 'process.exit(+process.versions.node.split(".")[0] >= 20 ? 0 : 1)' || { echo "Node.js 20+ is required."; exit 1; }
 
 echo "==> Starting Supabase (database, auth, API)..."
-$SUPABASE start -x studio,imgproxy,vector,logflare,edge-runtime,supavisor,realtime,storage-api,inbucket,mailpit
+$SUPABASE start -x studio,imgproxy,vector,logflare,edge-runtime,supavisor,storage-api
 $SUPABASE migration up --local >/dev/null
 
 echo "==> Writing local settings..."
@@ -33,6 +33,8 @@ echo "==> Installing web dependencies..."
 
 echo
 echo "Ready. Open http://localhost:3000 once the web server below is up."
+echo "Confirmation and password-reset emails land in the local mailbox: http://localhost:54324"
+echo "Make yourself admin: node scripts/make-admin.mjs you@example.com"
 echo "Stop everything later with: scripts/local-down.sh"
 echo
 cd apps/web && exec npm run dev

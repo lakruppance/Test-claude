@@ -34,6 +34,29 @@ export function supabaseDeps(sleep: (seconds: number) => Promise<void>): Orchest
         .upsert({ job_id: jobId, user_id: userId, step, ...patch }, { onConflict: "job_id,step" });
       if (error) throw new Error(error.message);
     },
+    async getPlanLimits(userId) {
+      const { data, error } = await db
+        .from("profiles")
+        .select("plans(max_video_minutes)")
+        .eq("id", userId)
+        .single();
+      if (error) throw new Error(error.message);
+      const plan = data.plans as unknown as { max_video_minutes: number } | null;
+      return { maxVideoMinutes: plan?.max_video_minutes ?? 20 };
+    },
+    async reserveMinutes(userId, jobId, minutes) {
+      const { data, error } = await db.rpc("reserve_minutes", {
+        p_user: userId,
+        p_job: jobId,
+        p_minutes: minutes,
+      });
+      if (error) throw new Error(error.message);
+      return data as { ok: boolean; reason?: string };
+    },
+    async releaseMinutes(jobId) {
+      const { error } = await db.rpc("release_minutes", { p_job: jobId });
+      if (error) throw new Error(error.message);
+    },
     startStep,
     pollCall,
     sleep,

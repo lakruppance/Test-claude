@@ -3,7 +3,7 @@ import { JobFailedError, processJob } from "../lib/orchestrator";
 import { supabaseDeps } from "../lib/orchestrator-deps";
 import { supabaseAdmin } from "../lib/supabase-admin";
 
-type Payload = { jobId: string; ownerId: string };
+type Payload = { jobId: string };
 
 export const processVideo = task({
   id: "process-video",
@@ -16,7 +16,7 @@ export const processVideo = task({
       log: (message: string, data?: Record<string, unknown>) => logger.info(message, data),
     };
     try {
-      return await processJob(deps, payload.jobId, payload.ownerId);
+      return await processJob(deps, payload.jobId);
     } catch (error) {
       if (error instanceof JobFailedError) {
         // Expected failure (bad input, nothing to clip...): record it and do not retry the run.
@@ -32,7 +32,8 @@ export const processVideo = task({
     }
   },
   onFailure: async ({ payload, error }) => {
-    // All run attempts exhausted: make the failure visible in the app and the admin.
+    // All run attempts exhausted: refund the minutes and make the failure visible.
+    await supabaseAdmin().rpc("release_minutes", { p_job: payload.jobId });
     await supabaseAdmin()
       .from("jobs")
       .update({

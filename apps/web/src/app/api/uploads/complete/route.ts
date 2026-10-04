@@ -4,7 +4,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { startLocalJob } from "@/lib/local-runner";
 import { completeMultipartUpload } from "@/lib/r2";
-import { ANONYMOUS_OWNER } from "@/lib/storage-keys";
+import { currentUser } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { processVideo } from "@/trigger/process-video";
 
@@ -17,6 +17,8 @@ const body = z.object({
 
 // Finalizes the upload, then queues the processing run (idempotent per job).
 export async function POST(request: Request) {
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   const { jobId, parts } = parsed.data;
@@ -24,9 +26,10 @@ export async function POST(request: Request) {
   const db = supabaseAdmin();
   const { data: job } = await db
     .from("jobs")
-    .select("id, status, source_key, options")
+    .select("id, user_id, status, source_key, options")
     .eq("id", jobId)
-    .single();
+    .eq("user_id", user.id) // ownership check: another user's job id behaves as not found
+    .maybeSingle();
   if (!job) return NextResponse.json({ error: "not_found" }, { status: 404 });
   if (job.status !== "uploading") return NextResponse.json({ jobId, status: job.status });
 
@@ -38,14 +41,14 @@ export async function POST(request: Request) {
 
   if (env().ORCHESTRATOR === "local") {
     await db.from("jobs").update({ status: "queued" }).eq("id", jobId);
-    startLocalJob(jobId, ANONYMOUS_OWNER);
+    startLocalJob(jobId);
     return NextResponse.json({ jobId, status: "queued" });
   }
 
   const handle = await tasks.trigger<typeof processVideo>(
     "process-video",
-    { jobId, ownerId: ANONYMOUS_OWNER },
-    { idempotencyKey: `process-video-${jobId}`, tags: [`job_${jobId}`] },
+    { jobId },
+    { idempotencyKey: `process-video-${jobId}`, tags: [`job_${jobId}`, `user_${user.id}`] },
   );
   await db.from("jobs").update({ status: "queued", trigger_run_id: handle.id }).eq("id", jobId);
   return NextResponse.json({ jobId, status: "queued" });

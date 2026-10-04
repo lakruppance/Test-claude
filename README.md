@@ -2,7 +2,7 @@
 
 SaaS qui génère des clips verticaux sous-titrés à partir de vidéos longues (upload, Drive/Dropbox, YouTube).
 
-État : **phase 1, cœur de traitement** (voir [`docs/phase-1.md`](docs/phase-1.md)). Voir [`docs/phase-0.md`](docs/phase-0.md) pour les choix techniques, les coûts estimés et les comptes à créer, et [`.env.example`](.env.example) pour les variables d'environnement.
+État : **phase 2, socle SaaS** (voir [`docs/phase-2.md`](docs/phase-2.md) ; phase 1 : [`docs/phase-1.md`](docs/phase-1.md)). Voir [`docs/phase-0.md`](docs/phase-0.md) pour les choix techniques, les coûts estimés et les comptes à créer, et [`.env.example`](.env.example) pour les variables d'environnement.
 
 ## Tester en local, sans abonnement
 

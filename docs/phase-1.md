@@ -103,7 +103,7 @@ Aucune clé ne passe par le chat. Tout se saisit dans les interfaces des platefo
 
 ### 3.3 Renseigner les variables du projet Vercel (environnement Production du projet staging)
 
-`APP_ENV=staging`, `STAGING_BASIC_AUTH` (identifiant:mot de passe de votre choix), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `TRIGGER_SECRET_KEY` (clé de l'environnement Trigger.dev ciblé).
+`APP_ENV=staging`, `STAGING_BASIC_AUTH` (identifiant:mot de passe de votre choix), `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (ajoutée en phase 2), `SUPABASE_SERVICE_ROLE_KEY`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `TRIGGER_SECRET_KEY` (clé de l'environnement Trigger.dev ciblé).
 
 ### 3.4 Lancer
 

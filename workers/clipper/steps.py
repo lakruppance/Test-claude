@@ -48,6 +48,13 @@ def execute(step: str, payload: dict[str, Any]) -> dict[str, Any]:
     from .storage import R2
 
     settings = get_settings()
+    if payload.get("max_source_minutes"):
+        # Plan limit decided by the orchestrator (e.g. 20 min on the free plan).
+        import dataclasses
+
+        settings = dataclasses.replace(
+            settings, max_source_minutes=float(payload["max_source_minutes"])
+        )
     res = pipeline.Resources(*RESOURCES[step])
     attempt = payload.get("attempt", 1)
     job = _job(payload)

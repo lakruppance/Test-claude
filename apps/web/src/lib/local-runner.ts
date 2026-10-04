@@ -8,17 +8,17 @@ const running = new Set<string>();
 const MAX_RUN_ATTEMPTS = 3;
 const sleep = (seconds: number) => new Promise<void>((r) => setTimeout(r, seconds * 1000));
 
-export function startLocalJob(jobId: string, ownerId: string): void {
+export function startLocalJob(jobId: string): void {
   if (running.has(jobId)) return;
   running.add(jobId);
-  void run(jobId, ownerId).finally(() => running.delete(jobId));
+  void run(jobId).finally(() => running.delete(jobId));
 }
 
-async function run(jobId: string, ownerId: string) {
+async function run(jobId: string) {
   const deps = { ...supabaseDeps(sleep), pollSeconds: 3, log: (m: string, d?: object) => console.info(`[job ${jobId}] ${m}`, d ?? "") };
   for (let attempt = 1; ; attempt++) {
     try {
-      await processJob(deps, jobId, ownerId);
+      await processJob(deps, jobId);
       return;
     } catch (error) {
       if (error instanceof JobFailedError) {
@@ -32,6 +32,7 @@ async function run(jobId: string, ownerId: string) {
       }
       console.error(`[job ${jobId}] attempt ${attempt} crashed`, error);
       if (attempt >= MAX_RUN_ATTEMPTS) {
+        await deps.releaseMinutes(jobId);
         await deps.updateJob(jobId, {
           status: "failed",
           error_code: "internal_error",
@@ -46,8 +47,8 @@ async function run(jobId: string, ownerId: string) {
 }
 
 // Called once at server start: resume jobs interrupted by a restart.
-export async function resumeLocalJobs(ownerId: string) {
+export async function resumeLocalJobs() {
   const { supabaseAdmin } = await import("./supabase-admin");
   const { data } = await supabaseAdmin().from("jobs").select("id").in("status", ["queued", "running"]);
-  for (const job of data ?? []) startLocalJob(job.id, ownerId);
+  for (const job of data ?? []) startLocalJob(job.id);
 }

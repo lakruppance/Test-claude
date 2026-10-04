@@ -5,8 +5,9 @@ export type StepName = "prepare" | "transcribe" | "detect" | "render";
 export type StepPayload = {
   job_id: string;
   owner_id: string;
-  user_id: string | null;
+  user_id: string;
   attempt: number;
+  max_source_minutes?: number;
   segment_id?: string;
   style?: string;
   with_hook?: boolean;

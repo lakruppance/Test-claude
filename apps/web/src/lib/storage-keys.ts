@@ -2,8 +2,6 @@
 export const sourcePrefix = (ownerId: string, jobId: string) => `sources/${ownerId}/${jobId}`;
 export const outputPrefix = (ownerId: string, jobId: string) => `outputs/${ownerId}/${jobId}`;
 
-export const ANONYMOUS_OWNER = "anonymous";
-
 const EXTENSIONS: Record<string, string> = {
   "video/mp4": "mp4",
   "video/quicktime": "mov",

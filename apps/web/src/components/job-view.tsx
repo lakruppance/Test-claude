@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { t } from "@/i18n/messages";
 import type { CostSummary } from "@/lib/costs";
+import { subscribeToRows } from "@/lib/realtime";
 
 type Clip = {
   id: string;
@@ -41,7 +42,7 @@ type JobPayload = {
   segments: Segment[];
   clips: Clip[];
   segments_json_url: string | null;
-  costs: CostSummary;
+  costs: CostSummary | null;
 };
 
 const STEPS = ["prepare", "transcribe", "detect", "render"];
@@ -65,12 +66,17 @@ export function JobView({ id }: { id: string }) {
         setData(payload);
         if (TERMINAL.has(payload.job.status)) return;
       }
-      timer = setTimeout(load, 3000);
+      timer = setTimeout(load, 10000); // fallback if Realtime is unavailable
     };
     load();
+    const unsubscribe = subscribeToRows(`job-${id}`, "jobs", `id=eq.${id}`, () => {
+      clearTimeout(timer);
+      void load();
+    });
     return () => {
       active = false;
       clearTimeout(timer);
+      unsubscribe();
     };
   }, [id]);
 
@@ -139,7 +145,7 @@ export function JobView({ id }: { id: string }) {
         </section>
       )}
 
-      {costs.events.length > 0 && (
+      {costs && costs.events.length > 0 && (
         <section className="grid gap-3">
           <h2 className="text-xl font-semibold">{t("job.costs")}</h2>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-sm md:max-w-md">

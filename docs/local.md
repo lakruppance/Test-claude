@@ -38,7 +38,11 @@ Le script :
 
 Pour tout arrêter : `scripts/local-down.sh`. Vos données sont conservées. Ajoutez `--wipe` pour tout effacer.
 
-## 3. Ajouter votre clé Claude
+## 3. Créer votre compte
+
+Sur http://localhost:3000, créez un compte. L'email de confirmation n'est pas réellement envoyé : il arrive dans la boîte locale, sur http://localhost:54324. Pour accéder à l'admin : `node scripts/make-admin.mjs votre@email`.
+
+## 3 bis. Ajouter votre clé Claude
 
 Au premier lancement, le script crée le fichier `.env.local` à la racine. Ouvrez-le dans un éditeur et complétez :
 
@@ -78,4 +82,4 @@ Puis relancez `scripts/local-up.sh`. Vos valeurs sont conservées d'un lancement
 | « Docker is installed but not running » | Démarrez Docker Desktop |
 | Le worker ne démarre pas | `docker compose logs worker` |
 | Le traitement échoue à « Sélection des passages » avec un message de clé | Complétez `ANTHROPIC_API_KEY` dans `.env.local`, puis relancez |
-| Ports déjà utilisés (3000, 8333, 8787, 54321) | Fermez l'application qui les occupe |
+| Ports déjà utilisés (3000, 8333, 8787, 54321, 54324) | Fermez l'application qui les occupe |

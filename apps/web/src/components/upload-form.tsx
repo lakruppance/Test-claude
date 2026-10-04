@@ -35,7 +35,11 @@ export function UploadForm() {
           rightsCertified: true,
         }),
       });
-      if (!startRes.ok) throw new Error((await startRes.json()).error ?? "upload_start_failed");
+      if (!startRes.ok) {
+        const code = (await startRes.json().catch(() => ({}))).error as string | undefined;
+        setProgress(null);
+        return setError(code && code !== "invalid_request" ? t(`upload.error.${code}`) : t("upload.error"));
+      }
       const start = (await startRes.json()) as UploadStart;
       const parts = await uploadParts(file, start, setProgress);
       const done = await fetch("/api/uploads/complete", {
@@ -44,7 +48,7 @@ export function UploadForm() {
         body: JSON.stringify({ jobId: start.jobId, parts }),
       });
       if (!done.ok) throw new Error("upload_complete_failed");
-      router.push(`/jobs/${start.jobId}`);
+      router.push(`/app/jobs/${start.jobId}`);
     } catch {
       setError(t("upload.error"));
       setProgress(null);
