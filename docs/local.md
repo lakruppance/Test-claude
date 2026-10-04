@@ -10,7 +10,7 @@ Ce mode sert à tester à petite échelle sur votre propre machine. Il n'y a auc
 | Trigger.dev | Orchestrateur intégré au serveur web | 0 |
 | AssemblyAI | Whisper en local (faster-whisper), AssemblyAI en option | 0 |
 | Vercel | `npm run dev` sur votre machine | 0 |
-| Claude (sélection des passages) | API Anthropic | **Paiement à l'usage**, environ 1 centime par vidéo de 10 min |
+| Claude (sélection des passages) | API Anthropic | **Paiement à l'usage**, environ 3 centimes par vidéo de 10 min (estimation) |
 
 Seule la clé API Anthropic est payante. Elle fonctionne sur crédits prépayés, sans abonnement. Pour un tout premier test, vous pouvez aussi vous en passer : voir l'étape 3.
 
