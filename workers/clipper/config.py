@@ -57,6 +57,10 @@ class Settings:
         default_factory=lambda: _env("CLAUDE_MODEL_LIGHT", "claude-haiku-4-5")
     )
     claude_effort: str = field(default_factory=lambda: _env("CLAUDE_EFFORT", "medium"))
+    # Proofread misheard words around the selected passages with the light model.
+    transcript_correction: bool = field(
+        default_factory=lambda: _env("TRANSCRIPT_CORRECTION", "true").lower() != "false"
+    )
     # Burned into free-plan clips (brand name; the product name lives in the web app config).
     watermark_text: str = field(default_factory=lambda: _env("WATERMARK_TEXT", "Fait avec Pépite"))
     assemblyai_speech_models: list[str] = field(

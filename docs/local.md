@@ -61,6 +61,8 @@ Puis relancez `scripts/local-up.sh`. Vos valeurs sont conservées d'un lancement
 | `TRANSCRIPTION_PROVIDER=whisper` | Transcription locale gratuite, par défaut |
 | `WHISPER_MODEL=small` | `base` (plus rapide), `small` (bon compromis), `medium` (plus précis, plus lent) |
 | `TRANSCRIPTION_PROVIDER=assemblyai` + `ASSEMBLYAI_API_KEY` | Transcription plus précise. Le compte gratuit inclut 185 h |
+| `WHISPER_MODEL=large-v3-turbo` | Transcription locale nettement plus précise que `small` (plus lente, ~1,6 Go à télécharger) |
+| `TRANSCRIPT_CORRECTION=true` | Claude Haiku corrige les mots mal entendus autour des passages retenus (~0,2 à 0,3 centime par vidéo). `false` pour désactiver |
 | `CLIPS_TO_RENDER=3` | Nombre de clips rendus par vidéo |
 | `MAX_SOURCE_MINUTES=30` | Durée maximale acceptée en local |
 | `LOCAL_WORKER_THREADS=2` | Nombre de rendus en parallèle (selon votre processeur) |

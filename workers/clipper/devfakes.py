@@ -40,6 +40,13 @@ class FakeMessages:
         schema = kwargs.get("output_config", {}).get("format", {}).get("schema", {})
         if "items" in schema.get("properties", {}):
             return self._metadata(kwargs)
+        if "corrections" in schema.get("properties", {}):
+            return SimpleNamespace(
+                model="dev-fake", stop_reason="end_turn",
+                content=[SimpleNamespace(type="text", text='{"corrections": []}')],
+                usage=SimpleNamespace(input_tokens=0, output_tokens=0, cache_read_input_tokens=0,
+                                      cache_creation_input_tokens=0),
+            )
 
         lines = kwargs["messages"][0]["content"].splitlines()
         spans = [

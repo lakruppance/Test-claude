@@ -130,6 +130,7 @@ def transcribe(job: JobRef, settings: Settings, r2, db, provider, resources: Res
 def detect(job: JobRef, settings: Settings, r2, db, messages, resources: Resources,
            attempt: int = 1) -> dict[str, Any]:
     from . import metadata
+    from .correct import proofread, refresh_segment_text
     from .segments import detect_segments
 
     started = time.monotonic()
@@ -138,6 +139,13 @@ def detect(job: JobRef, settings: Settings, r2, db, messages, resources: Resourc
     platform_meta: dict[int, dict[str, Any]] = {}
     try:
         segments = detect_segments(messages, transcript, settings, ledger)
+        transcript, fixes = proofread(messages, settings, ledger, transcript, segments)
+        if fixes:
+            # Subtitles, the review screen and later re-renders all read the corrected words.
+            r2.put_json(f"{job.outputs}/transcript.json", transcript.model_dump_json())
+            db.update("transcripts", {"words": [w.model_dump() for w in transcript.words]},
+                      job_id=job.job_id)
+            segments = refresh_segment_text(transcript, segments)
         platform_meta = metadata.generate(messages, settings, ledger, segments,
                                           transcript.language)
     finally:
@@ -179,6 +187,7 @@ def detect(job: JobRef, settings: Settings, r2, db, messages, resources: Resourc
     to_render = sorted(rows, key=lambda r: r["rank"])[: settings.clips_to_render]
     return {
         "segments": len(rows),
+        "corrections": fixes,
         "to_render": [r["id"] for r in to_render],
         "cost_usd": cost,
     }

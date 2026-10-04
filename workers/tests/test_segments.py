@@ -204,10 +204,11 @@ def _check_schema(node, path="$"):
 
 
 def test_every_schema_sent_to_claude_is_accepted_by_structured_outputs():
+    from clipper.correct import CORRECTION_SCHEMA
     from clipper.metadata import META_SCHEMA
     from clipper.segments import CANDIDATES_SCHEMA
 
-    for schema in (CANDIDATES_SCHEMA, META_SCHEMA):
+    for schema in (CANDIDATES_SCHEMA, META_SCHEMA, CORRECTION_SCHEMA):
         _check_schema(schema)
 
 
