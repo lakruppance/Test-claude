@@ -39,7 +39,9 @@ def messages_client():
         raise PipelineError("claude_not_configured", "ANTHROPIC_API_KEY is not set")
     import anthropic
 
-    return anthropic.Anthropic(max_retries=4).beta.messages
+    from .claude_errors import GuardedMessages
+
+    return GuardedMessages(anthropic.Anthropic(max_retries=4).beta.messages)
 
 
 def execute(step: str, payload: dict[str, Any]) -> dict[str, Any]:

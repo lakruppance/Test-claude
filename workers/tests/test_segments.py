@@ -157,3 +157,30 @@ def test_platform_metadata_is_cleaned_and_never_fails():
             raise RuntimeError("API down")
 
     assert metadata.generate(Broken(), Settings(), ledger, [seg], "fr") == {}
+
+
+def test_claude_account_errors_become_clear_pipeline_errors():
+    import anthropic
+    import httpx
+    import pytest
+
+    from clipper.claude_errors import GuardedMessages
+    from clipper.pipeline import PipelineError
+
+    def failing(status, cls, message):
+        class Inner:
+            def create(self, **_):
+                req = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+                raise cls(message, response=httpx.Response(status, request=req), body=None)
+        return GuardedMessages(Inner())
+
+    cases = [
+        (401, anthropic.AuthenticationError, "invalid x-api-key", "claude_auth_failed"),
+        (404, anthropic.NotFoundError, "model not found", "claude_model_unavailable"),
+        (400, anthropic.BadRequestError, "Your credit balance is too low", "claude_no_credit"),
+        (400, anthropic.BadRequestError, "invalid parameter", "claude_bad_request"),
+    ]
+    for status, cls, message, code in cases:
+        with pytest.raises(PipelineError) as err:
+            failing(status, cls, message).create(model="x")
+        assert err.value.code == code
